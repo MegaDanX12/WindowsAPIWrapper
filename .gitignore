@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/GenericTest/GenericTest.csproj
+/GenericTest/UnitTest1.cs
+/GenericTest/packages.config
+/GenericTest/Properties/AssemblyInfo.cs
+/.gitignore
