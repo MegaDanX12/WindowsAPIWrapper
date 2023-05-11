@@ -14,5 +14,10 @@
         /// Parametri non validi.
         /// </summary>
         internal const uint E_INVALIDARG = 2147942487;
+
+        /// <summary>
+        /// Accesso negato.
+        /// </summary>
+        internal const uint E_ACCESSDENIED = 2147942405;
     }
 }

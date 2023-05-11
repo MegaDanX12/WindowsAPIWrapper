@@ -29,5 +29,10 @@
         /// Il processo non ha un'identità pacchetto.
         /// </summary>
         internal const int APPMODEL_ERROR_NO_PACKAGE = 15700;
+
+        /// <summary>
+        /// Handle non valido.
+        /// </summary>
+        internal const int ERROR_INVALID_HANDLE = 6;
     }
 }

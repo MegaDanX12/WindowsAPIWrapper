@@ -19,16 +19,6 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper
     public static class ELS
     {
         /// <summary>
-        /// Callback che riceve i risultati del riconoscimento testo.
-        /// </summary>
-        internal static MappingCallback TextRecognitionCallback = new MappingCallback(RecognizeCallback);
-
-        /// <summary>
-        /// Callback gestito per i risultati del riconoscimento testo.
-        /// </summary>
-        internal static RecognitionResultCallback TextRecognitionManagedCallback;
-
-        /// <summary>
         /// Recupera i servizi ELS disponibili supportati dalla piattaforma.
         /// </summary>
         /// <param name="EnumerationOptions">Istanza di <see cref="ServiceEnumerationOptions"/> con le opzioni di enumerazione.</param>
@@ -41,6 +31,7 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper
                 Result = ELSFunctions.GetServices(IntPtr.Zero, out IntPtr ServicesDataPointer, out uint ServicesCount);
                 if (Result is S_OK)
                 {
+                    ELSMetadata.ServicesArrayPointer = ServicesDataPointer;
                     MAPPING_SERVICE_INFO[] ServiceStructures = UtilityMethods.ReadUnmanagedArray<MAPPING_SERVICE_INFO>(ServicesDataPointer, (int)ServicesCount);
                     ServiceInfo[] Services = new ServiceInfo[ServiceStructures.Length];
                     for (int i = 0; i < Services.Length; i++)
@@ -64,6 +55,7 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper
                 Marshal.FreeHGlobal(StructurePointer);
                 if (Result is S_OK)
                 {
+                    ELSMetadata.ServicesArrayPointer = ServicesDataPointer;
                     MAPPING_SERVICE_INFO[] ServiceStructures = UtilityMethods.ReadUnmanagedArray<MAPPING_SERVICE_INFO>(ServicesDataPointer, (int)ServicesCount);
                     ServiceInfo[] Services = new ServiceInfo[ServiceStructures.Length];
                     for (int i = 0; i < Services.Length; i++)
@@ -81,24 +73,95 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper
         }
 
         /// <summary>
-        /// Callback eseguito quando il riconoscimento del testo è asincrono.
+        /// Esegue l'operazione di riconoscimento testo utilizzando il servizio indicato.
         /// </summary>
-        /// <param name="BagPointer">Puntatore a struttura <see cref="MAPPING_PROPERTY_BAG"/> con i risultati della chiamata.</param>
-        /// <param name="ApplicationDataPointer">Puntatore ai dati privati dell'applicazione.</param>
-        /// <param name="DataSize">Dimensione, in byte, dei dati dell'applicazione.</param>
-        /// <param name="Result">Risulato della chiamata.</param>
-        internal static void RecognizeCallback(IntPtr BagPointer, IntPtr ApplicationDataPointer, uint DataSize, uint Result)
+        /// <param name="Service">Servizio da utilizzare.</param>
+        /// <param name="Text">Testo su cui eseguire l'operazione.</param>
+        /// <param name="Index">Indice all'interno del testo che il servizio deve usare.</param>
+        /// <param name="Options">Opzioni di riconoscimento.</param>
+        /// <returns>Un'istanza di una classe <see cref="TextRecognitionProperties"/> con i risultati dell'operazione.</returns>
+        public static TextRecognitionProperties RecognizeText(ServiceInfo Service, string Text, int Index, TextRecognitionOptions Options = null) 
         {
-            MAPPING_PROPERTY_BAG PropertyBag = (MAPPING_PROPERTY_BAG)Marshal.PtrToStructure(BagPointer, typeof(MAPPING_PROPERTY_BAG));
-            TextRecognitionProperties Properties = new TextRecognitionProperties(PropertyBag);
-            byte[] ApplicationData = null;
-            if (DataSize > 0)
+            IntPtr ServiceDataStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(Service.ServiceInfoStructure));
+            Marshal.StructureToPtr(Service.ServiceInfoStructure, ServiceDataStructurePointer, false);
+            ELSMetadata.ServiceInfoPointer = ServiceDataStructurePointer;
+            IntPtr OptionsStructurePointer = IntPtr.Zero;
+            if (Options != null)
             {
-                ApplicationData = new byte[DataSize];
-                Marshal.Copy(ApplicationDataPointer, ApplicationData, 0, ApplicationData.Length);
+                MAPPING_OPTIONS OptionsStructure = Options.ToStructure();
+                OptionsStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(OptionsStructure));
+                Marshal.StructureToPtr(OptionsStructure, OptionsStructurePointer, false);
+                ELSMetadata.RecognitionOptionsPointer = OptionsStructurePointer;
             }
-            bool Success = Result is S_OK;
-            TextRecognitionManagedCallback.Invoke(Properties, ApplicationData, Success);
+            IntPtr BagPointer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(MAPPING_PROPERTY_BAG)));
+            MAPPING_PROPERTY_BAG Bag = new MAPPING_PROPERTY_BAG()
+            {
+                Size = new IntPtr(Marshal.SizeOf(typeof(MAPPING_PROPERTY_BAG)))
+            };
+            Marshal.StructureToPtr(Bag, BagPointer, false);
+            ELSMetadata.BagPointer = BagPointer;
+            uint Result = ELSFunctions.RecognizeText(ServiceDataStructurePointer, Text, (uint)Text.Length, (uint)Index, OptionsStructurePointer, BagPointer);
+            if (Result is S_OK)
+            {
+                Bag = (MAPPING_PROPERTY_BAG)Marshal.PtrToStructure(BagPointer, typeof(MAPPING_PROPERTY_BAG));
+                return new TextRecognitionProperties(Bag);
+            }
+            else
+            {
+                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Esegue un'azione.
+        /// </summary>
+        /// <param name="StartingIndex">Indice di partenza all'interno del testo.</param>
+        /// <param name="ActionID">ID dell'azione da eseguire.</param>
+        public static void DoAction(int StartingIndex, string ActionID)
+        {
+            uint Result = ELSFunctions.DoAction(ELSMetadata.BagPointer, (uint)StartingIndex, ActionID);
+            if (Result != S_OK)
+            {
+                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+            }
+        }
+
+        /// <summary>
+        /// Libera la memoria e le risorse allocate durante un'operazione di riconoscimento testo.
+        /// </summary>
+        public static void FreePropertiesData()
+        {
+            uint Result = ELSFunctions.FreePropertyBag(ELSMetadata.BagPointer);
+            if (Result != S_OK)
+            {
+                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+            }
+            else
+            {
+                ELSMetadata.TextRecognitionManagedCallback = null;
+                if (ELSMetadata.RecognitionOptionsPointer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(ELSMetadata.RecognitionOptionsPointer);
+                }
+                Marshal.FreeHGlobal(ELSMetadata.BagPointer);
+            }
+        }
+
+        /// <summary>
+        /// Libera la memoria e le risorse allocate per permettere all'applicazione di interagire con i servizi ELS.
+        /// </summary>
+        public static void FreeServices()
+        {
+            uint Result = ELSFunctions.FreeServices(ELSMetadata.ServicesArrayPointer);
+            if (Result != S_OK)
+            {
+                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+            }
+            else
+            {
+                Marshal.FreeHGlobal(ELSMetadata.ServiceInfoPointer);
+            }
         }
     }
 }

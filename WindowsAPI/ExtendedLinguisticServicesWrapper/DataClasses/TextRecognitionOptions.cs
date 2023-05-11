@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using WindowsAPI.ExtendedLinguisticServicesWrapper.Native;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Callbacks;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSCallbacks;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSStructures;
@@ -108,8 +109,8 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper.DataClasses
             };
             if (RecognizeCallback != null)
             {
-                ELS.TextRecognitionManagedCallback = RecognizeCallback;
-                Structure.RecognizeCallback = ELS.TextRecognitionCallback;
+                ELSMetadata.TextRecognitionManagedCallback = RecognizeCallback;
+                Structure.RecognizeCallback = ELSMetadata.TextRecognitionCallback;
             }
             else
             {
