@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WindowsAPI.HighDPIWrapper.Native;
-using WindowsAPI.WindowsAndMessagesWrapper.Configuration;
-using WindowsAPI.WindowsAndMessagesWrapper.Native.Configuration;
-using WindowsAPI.WindowsGDIWrapper.Native.FontAndText;
+﻿using WindowsAPI.WindowsAndMessagesWrapper.Native.Configuration;
 using static WindowsAPI.HighDPIWrapper.Native.HighDPIEnumerations;
 
 namespace WindowsAPI.HighDPIWrapper

@@ -21,7 +21,7 @@ namespace WindowsAPI
         /// <param name="ArrayPointer">Puntatore al primo elemento dell'array.</param>
         /// <param name="ArrayLength">Numero di elementi.</param>
         /// <returns>Array della lunghezza indicata con gli elementi letti dal puntatore.</returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
         internal static T[] ReadUnmanagedArray<T>(IntPtr ArrayPointer, int ArrayLength)
         {
             Type ElementType = typeof(T);
@@ -34,6 +34,14 @@ namespace WindowsAPI
                     StringPointer = Marshal.ReadIntPtr(ArrayPointer);
                     ((string[])ReturnArray)[i] = Marshal.PtrToStringUni(StringPointer);
                     ArrayPointer += IntPtr.Size;
+                }
+            }
+            if (ElementType == typeof(uint))
+            {
+                for (int i = 0; i < ArrayLength; i++)
+                {
+                    ((uint[])ReturnArray)[i] = (uint)Marshal.ReadInt32(ArrayPointer);
+                    ArrayPointer += 4;
                 }
             }
             else if (ElementType == typeof(MAPPING_SERVICE_INFO))
@@ -59,7 +67,7 @@ namespace WindowsAPI
             }
             else
             {
-                throw new InvalidOperationException("Unsupported array type.");
+                throw new NotSupportedException("Unsupported array type.");
             }
             return (T[])ReturnArray;
         }

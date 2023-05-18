@@ -34,5 +34,15 @@
         /// Handle non valido.
         /// </summary>
         internal const int ERROR_INVALID_HANDLE = 6;
+
+        /// <summary>
+        /// Flag non valide.
+        /// </summary>
+        internal const int ERROR_INVALID_FLAGS = 1004;
+
+        /// <summary>
+        /// Non ci sono più file.
+        /// </summary>
+        internal const int ERROR_NO_MORE_FILES = 18;
     }
 }

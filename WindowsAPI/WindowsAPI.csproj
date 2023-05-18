@@ -87,6 +87,7 @@
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSCallbacks.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSFunctions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSMetadata.cs" />
+    <Compile Include="General\Native\GeneralConstants.cs" />
     <Compile Include="General\Native\Macros.cs" />
     <Compile Include="DiagnosticsWrapper\Native\HRESULTErrorConstants.cs" />
     <Compile Include="DiagnosticsWrapper\Native\ProcessesAndThreads\ProcessesAndThreadsFunctions.cs" />
@@ -96,6 +97,17 @@
     <Compile Include="General\Native\GeneralStructures.cs" />
     <Compile Include="HighDPIWrapper\DataClasses\DialogControlDPIChangeBehavior.cs" />
     <Compile Include="HighDPIWrapper\DataClasses\DialogDPIChangeBehavior.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Callbacks.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\DataClasses\MUIFileInfo.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\DataClasses\UILanguageInfo.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Enumerations.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\MUI.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Native\MUICallbacks.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIConstants.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIEnumerations.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIFunctions.cs" />
+    <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIStructures.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Native\NLSConstants.cs" />
     <Compile Include="UserInterfaceElementsWrapper\Icons\DataClasses\IconMetrics.cs" />
     <Compile Include="WindowsAndMessagesWrapper\Configuration\DataClasses\NonClientMetrics.cs" />
     <Compile Include="WindowsGDIWrapper\FontAndText\DataClasses\FontAttributes.cs" />
