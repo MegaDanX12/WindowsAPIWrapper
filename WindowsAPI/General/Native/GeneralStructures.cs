@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static WindowsAPI.General.Native.GeneralEnumerations;
 
 namespace WindowsAPI.General.Native
 {
@@ -132,6 +134,53 @@ namespace WindowsAPI.General.Native
             /// <remarks>I primi 2 byte contengono il terzo gruppo di 4 cifre esadecimali, il resto contine il gruppo finale di 12 cifre esadecimali.</remarks>
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
             public byte[] Data4;
+        }
+
+        /// <summary>
+        /// Data e ora.
+        /// </summary>
+        /// <remarks>L'ora è UTC o locale, in base alla funzione che usa la struttura.</remarks>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SYSTEMTIME
+        {
+            /// <summary>
+            /// Anno.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 1601 a 30827.</remarks>
+            public ushort Year;
+            /// <summary>
+            /// Mese.
+            /// </summary>
+            public Month Month;
+            /// <summary>
+            /// Giorno della settimana.
+            /// </summary>
+            public GeneralEnumerations.DayOfWeek DayOfWeek;
+            /// <summary>
+            /// Giorno del mese.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 1 a 31.</remarks>
+            public ushort Day;
+            /// <summary>
+            /// Ora.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 0 a 23.</remarks>
+            public ushort Hour;
+            /// <summary>
+            /// Minuti.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 0 a 59.</remarks>
+            public ushort Minute;
+            /// <summary>
+            /// Secondi.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 0 a 59.</remarks>
+            public ushort Second;
+            /// <summary>
+            /// Millisecondi.
+            /// </summary>
+            /// <remarks>I valori validi vanno da 0 a 999.</remarks>
+            public ushort Milliseconds;
         }
     }
 }

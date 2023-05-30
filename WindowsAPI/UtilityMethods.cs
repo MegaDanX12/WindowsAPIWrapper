@@ -44,6 +44,14 @@ namespace WindowsAPI
                     ArrayPointer += 4;
                 }
             }
+            else if (ElementType == typeof(ushort))
+            {
+                for (int i = 0; i < ArrayLength; i++)
+                {
+                    ((ushort[])ReturnArray)[i] = (ushort)Marshal.ReadInt16(ArrayPointer);
+                    ArrayPointer += 2;
+                }
+            }
             else if (ElementType == typeof(MAPPING_SERVICE_INFO))
             {
                 MAPPING_SERVICE_INFO ServiceInfo;

@@ -35,6 +35,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Drawing.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -77,6 +78,7 @@
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMFunctions.cs" />
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMMessages.cs" />
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMStructures.cs" />
+    <Compile Include="DiagnosticsWrapper\Native\ErrorHandling\ErrorHandlingFunctions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Callbacks.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\DataClasses\ServiceEnumerationOptions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\DataClasses\ServiceInfo.cs" />
@@ -88,6 +90,7 @@
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSFunctions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSMetadata.cs" />
     <Compile Include="General\Native\GeneralConstants.cs" />
+    <Compile Include="General\Native\GeneralEnumerations.cs" />
     <Compile Include="General\Native\Macros.cs" />
     <Compile Include="DiagnosticsWrapper\Native\HRESULTErrorConstants.cs" />
     <Compile Include="DiagnosticsWrapper\Native\ProcessesAndThreads\ProcessesAndThreadsFunctions.cs" />
@@ -107,7 +110,23 @@
     <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIEnumerations.cs" />
     <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIFunctions.cs" />
     <Compile Include="MultilingualUserInterfaceWrapper\Native\MUIStructures.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Callbacks.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\CharacterTextProcessingInfo.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\CharacterTypeInfo.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\CodePageInfo.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\CurrencyFormat.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\LocaleInfo.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\LocaleSignature.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\NLSVersionInfo.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\NumberFormat.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\DataClasses\UnicodeSubset.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Enumerations.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Native\NLSCallbacks.cs" />
     <Compile Include="NationalLanguageSupportWrapper\Native\NLSConstants.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Native\NLSEnumerations.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Native\NLSFunctions.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\Native\NLSStructures.cs" />
+    <Compile Include="NationalLanguageSupportWrapper\NLS.cs" />
     <Compile Include="UserInterfaceElementsWrapper\Icons\DataClasses\IconMetrics.cs" />
     <Compile Include="WindowsAndMessagesWrapper\Configuration\DataClasses\NonClientMetrics.cs" />
     <Compile Include="WindowsGDIWrapper\FontAndText\DataClasses\FontAttributes.cs" />
