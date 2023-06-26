@@ -14,7 +14,8 @@ using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIStructures;
 using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIConstants;
 using WindowsAPI.NationalLanguageSupportWrapper.Native;
 using WindowsAPI.General.Native;
-using WindowsAPI.DiagnosticsWrapper.Native;
+using WindowsAPI.ErrorHandlingWrapper.Native;
+using WindowsAPI.SafeHandles;
 
 namespace WindowsAPI.MultilingualUserInterfaceWrapper
 {
@@ -87,24 +88,24 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
             uint StructureSize = 0;
             _ = GetFileMUIInfo((MUIEnumerations.MUIFileInfo)Info, FilePath, IntPtr.Zero, ref StructureSize);
             StructureSize = (uint)Marshal.SizeOf(typeof(FILEMUIINFO)) + StructureSize;
-            IntPtr StructureBuffer = Marshal.AllocHGlobal((int)StructureSize);
-            FILEMUIINFO Structure = new FILEMUIINFO()
+            using (SafeStructPointer StructureBuffer = new SafeStructPointer((int)StructureSize))
             {
-                Size = StructureSize,
-                Version = MUI_FILEINFO_VERSION
-            };
-            Marshal.StructureToPtr(Structure, StructureBuffer, false);
-            if (!GetFileMUIInfo((MUIEnumerations.MUIFileInfo)Info, FilePath, StructureBuffer, ref StructureSize))
-            {
-                Marshal.FreeHGlobal(StructureBuffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Structure = (FILEMUIINFO)Marshal.PtrToStructure(StructureBuffer, typeof(FILEMUIINFO));
-                MUIFileInfo FileInfo = new MUIFileInfo(Structure, StructureBuffer);
-                Marshal.FreeHGlobal(StructureBuffer);
-                return FileInfo;
+                FILEMUIINFO Structure = new FILEMUIINFO()
+                {
+                    Size = StructureSize,
+                    Version = MUI_FILEINFO_VERSION
+                };
+                StructureBuffer.WriteToMemory<FILEMUIINFO>(Structure);
+                if (!GetFileMUIInfo((MUIEnumerations.MUIFileInfo)Info, FilePath, StructureBuffer, ref StructureSize))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = StructureBuffer.ReadFromMemory<FILEMUIINFO>();
+                    MUIFileInfo FileInfo = new MUIFileInfo(Structure, StructureBuffer);
+                    return FileInfo;
+                }
             }
         }
 
@@ -228,30 +229,16 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
             }
             uint BufferSize = 0;
             _ = MUIFunctions.GetProcessPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out _, IntPtr.Zero, ref BufferSize);
-            IntPtr Buffer = Marshal.AllocHGlobal((int)BufferSize * UnicodeEncoding.CharSize);
-            if (MUIFunctions.GetProcessPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out uint LanguagesCount, Buffer, ref BufferSize))
+            using (SafeMultistringPointer Buffer = new SafeMultistringPointer((int)BufferSize * UnicodeEncoding.CharSize))
             {
-                if (LanguagesCount > 0)
+                if (MUIFunctions.GetProcessPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out uint LanguagesCount, Buffer, ref BufferSize))
                 {
-                    Marshal.FreeHGlobal(Buffer);
-                    return Array.Empty<string>();
+                    return Buffer.ReadStringsFromMemory((int)LanguagesCount);
                 }
                 else
                 {
-                    string[] Languages = new string[LanguagesCount];
-                    for (int i = 0; i < LanguagesCount; i++)
-                    {
-                        Languages[i] = Marshal.PtrToStringUni(Buffer);
-                        Buffer += (Languages[i].Length + 1) * UnicodeEncoding.CharSize;
-                    }
-                    Marshal.FreeHGlobal(Buffer);
-                    return Languages;
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
         }
 
@@ -276,30 +263,16 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
                 Options |= MUI_MACHINE_LANGUAGE_SETTINGS;
             }
             _ = MUIFunctions.GetSystemPreferredUILanguages(Options, out _, IntPtr.Zero, ref BufferSize);
-            IntPtr Buffer = Marshal.AllocHGlobal((int)BufferSize * 2);
-            if (MUIFunctions.GetSystemPreferredUILanguages(Options, out uint LanguagesCount, Buffer, ref BufferSize))
+            using (SafeMultistringPointer Buffer = new SafeMultistringPointer((int)BufferSize * UnicodeEncoding.CharSize))
             {
-                if (LanguagesCount == 0)
+                if (MUIFunctions.GetSystemPreferredUILanguages(Options, out uint LanguagesCount, Buffer, ref BufferSize))
                 {
-                    Marshal.FreeHGlobal(Buffer);
-                    return Array.Empty<string>();
+                    return Buffer.ReadStringsFromMemory((int)LanguagesCount);
                 }
                 else
                 {
-                    string[] Languages = new string[LanguagesCount];
-                    for (int i = 0; i < LanguagesCount; i++)
-                    {
-                        Languages[i] = Marshal.PtrToStringUni(Buffer);
-                        Buffer += (Languages[i].Length + 1) * 2;
-                    }
-                    Marshal.FreeHGlobal(Buffer);
-                    return Languages;
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
         }
 
@@ -334,30 +307,16 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
                 throw new ArgumentException("Invalid filtering.");
             }
             _ = MUIFunctions.GetThreadPreferredUILanguages(Options, out _, IntPtr.Zero, ref BufferSize);
-            IntPtr Buffer = Marshal.AllocHGlobal((int)BufferSize * UnicodeEncoding.CharSize);
-            if (MUIFunctions.GetThreadPreferredUILanguages(Options, out uint LanguagesCount, Buffer, ref BufferSize))
+            using (SafeMultistringPointer Buffer = new SafeMultistringPointer((int)BufferSize * UnicodeEncoding.CharSize))
             {
-                if (LanguagesCount == 0)
+                if (MUIFunctions.GetThreadPreferredUILanguages(Options, out uint LanguagesCount, Buffer, ref BufferSize))
                 {
-                    Marshal.FreeHGlobal(Buffer);
-                    return Array.Empty<string>();
+                    return Buffer.ReadStringsFromMemory((int)LanguagesCount);
                 }
                 else
                 {
-                    string[] Languages = new string[LanguagesCount];
-                    for (int i = 0; i < LanguagesCount; i++)
-                    {
-                        Languages[i] = Marshal.PtrToStringUni(Buffer);
-                        Buffer += (Languages[i].Length + 1) * UnicodeEncoding.CharSize;
-                    }
-                    Marshal.FreeHGlobal(Buffer);
-                    return Languages;
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
         }
 
@@ -386,16 +345,17 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
             }
             uint BufferSize = 0;
             _ = GetUILanguageInfo((MUIEnumerations.LanguageFormat)Format, Language, IntPtr.Zero, ref BufferSize, out _);
-            IntPtr Buffer = Marshal.AllocHGlobal((int)BufferSize * UnicodeEncoding.CharSize);
-            if (GetUILanguageInfo((MUIEnumerations.LanguageFormat)Format, Language, Buffer, ref BufferSize, out MUIEnumerations.LanguageAttributes Attributes))
+            using (SafeMultistringPointer Buffer = new SafeMultistringPointer((int)BufferSize * UnicodeEncoding.CharSize))
             {
-                UILanguageInfo LanguageInfo = new UILanguageInfo(Language, Attributes, Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return LanguageInfo;
-            }
-            else
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                if (GetUILanguageInfo((MUIEnumerations.LanguageFormat)Format, Language, Buffer, ref BufferSize, out MUIEnumerations.LanguageAttributes Attributes))
+                {
+                    UILanguageInfo LanguageInfo = new UILanguageInfo(Language, Attributes, Buffer);
+                    return LanguageInfo;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -423,30 +383,16 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper
             }
             uint BufferSize = 0;
             _ = MUIFunctions.GetUserPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out _, IntPtr.Zero, ref BufferSize);
-            IntPtr Buffer = Marshal.AllocHGlobal((int)BufferSize * UnicodeEncoding.CharSize);
-            if (MUIFunctions.GetUserPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out uint LanguagesCount, Buffer, ref BufferSize))
+            using (SafeMultistringPointer Buffer = new SafeMultistringPointer((int)BufferSize * UnicodeEncoding.CharSize))
             {
-                if (LanguagesCount == 0)
+                if (MUIFunctions.GetUserPreferredUILanguages((MUIEnumerations.LanguageFormat)Format, out uint LanguagesCount, Buffer, ref BufferSize))
                 {
-                    Marshal.FreeHGlobal(Buffer);
-                    return Array.Empty<string>();
+                    return Buffer.ReadStringsFromMemory((int)LanguagesCount);
                 }
                 else
                 {
-                    string[] Languages = new string[LanguagesCount];
-                    for (int i = 0; i < LanguagesCount; i++)
-                    {
-                        Languages[i] = Marshal.PtrToStringUni(Buffer);
-                        Buffer += (Languages[i].Length + 1) * UnicodeEncoding.CharSize;
-                    }
-                    Marshal.FreeHGlobal(Buffer);
-                    return Languages;
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
             }
         }
 

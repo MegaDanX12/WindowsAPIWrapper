@@ -1,4 +1,4 @@
-﻿namespace WindowsAPI.DiagnosticsWrapper.Native
+﻿namespace WindowsAPI.ErrorHandlingWrapper.Native
 {
     /// <summary>
     /// Codici di errore HRESULT.

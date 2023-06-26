@@ -4,12 +4,11 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using WindowsAPI.NationalLanguageSupportWrapper.Native;
 using static WindowsAPI.NationalLanguageSupportWrapper.Enumerations;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSConstants;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSStructures;
-using static WindowsAPI.DiagnosticsWrapper.Native.Win32ErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.Win32ErrorConstants;
 using static WindowsAPI.NationalLanguageSupportWrapper.Callbacks;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSEnumerations;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSCallbacks;
@@ -18,7 +17,9 @@ using WindowsAPI.NationalLanguageSupportWrapper.DataClasses;
 using System.IO;
 using static WindowsAPI.General.Native.GeneralStructures;
 using WindowsAPI.General.Native;
-using static WindowsAPI.DiagnosticsWrapper.Native.ErrorHandling.ErrorHandlingFunctions;
+using static WindowsAPI.ErrorHandlingWrapper.Native.ErrorHandlingFunctions;
+using WindowsAPI.SafeHandles;
+using Microsoft.SqlServer.Server;
 
 namespace WindowsAPI.NationalLanguageSupportWrapper
 {
@@ -1314,17 +1315,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 throw new InvalidEnumArgumentException("Invalid calendar.");
             }
             uint Flags = (uint)NLSEnumerations.CalendarData.CAL_ICALINTVALUE | (uint)CalendarOptions.CAL_RETURN_NUMBER;
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetCalendarInfo(LocaleName, (CalendarID)Calendar, null, Flags, null, 0, ValuePointer);
-            if (CharCount is 2)
+            using (SafeValuePointer ValuePointer = new SafeValuePointer(4))
             {
-                int Value = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return (Calendar)Value;
-            }
-            else
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetCalendarInfo(LocaleName, (CalendarID)Calendar, null, Flags, null, 0, ValuePointer);
+                if (CharCount is 2)
+                {
+                    return ValuePointer.ReadFromMemory<Calendar>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -1387,17 +1388,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= (uint)CalendarOptions.CAL_NOUSEROVERRIDE;
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetCalendarInfo(LocaleName, (CalendarID)Calendar, null, Flags, null, 0, ValuePointer);
-            if (CharCount is 2)
+            using (SafeValuePointer ValuePointer = new SafeValuePointer(4))
             {
-                int Value = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
-            else
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetCalendarInfo(LocaleName, (CalendarID)Calendar, null, Flags, null, 0, ValuePointer);
+                if (CharCount is 2)
+                {
+                    return ValuePointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -2473,19 +2474,19 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     }
                 }
             }
-            IntPtr FormatStructurePointer = IntPtr.Zero;
+            SafeStructPointer FormatStructurePointer = null;
             if (Format != null)
             {
                 CURRENCYFMT FormatStructure = Format.ToStructure();
-                FormatStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(FormatStructure));
-                Marshal.StructureToPtr(FormatStructure, FormatStructurePointer, false);
+                FormatStructurePointer = new SafeStructPointer(Marshal.SizeOf(FormatStructure));
+                FormatStructurePointer.WriteToMemory<CURRENCYFMT>(FormatStructure);
             }
             int RequiredSize = NLSFunctions.GetCurrencyFormat(LocaleName, IgnoreUserPreferences ? 0 : LOCALE_NOUSEROVERRIDE, StringToFormat, FormatStructurePointer, null, 0);
             if (RequiredSize is 0)
             {
-                if (FormatStructurePointer != IntPtr.Zero)
+                if (!FormatStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(FormatStructurePointer);
+                    FormatStructurePointer.Dispose();
                 }
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -2493,9 +2494,9 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 StringBuilder FormattedString = new StringBuilder(RequiredSize);
                 int CharCount = NLSFunctions.GetCurrencyFormat(LocaleName, IgnoreUserPreferences ? 0 : LOCALE_NOUSEROVERRIDE, StringToFormat, FormatStructurePointer, FormattedString, RequiredSize);
-                if (FormatStructurePointer != IntPtr.Zero)
+                if (!FormatStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(FormatStructurePointer);
+                    FormatStructurePointer.Dispose();
                 }
                 if (CharCount is 0)
                 {
@@ -2565,8 +2566,8 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     }
                 }
             }
-            IntPtr DateStructurePointer = IntPtr.Zero;
-            if (Date.HasValue)
+            SafeStructPointer DateStructurePointer = null;
+            if (Format != null)
             {
                 SYSTEMTIME DateStructure = new SYSTEMTIME()
                 {
@@ -2575,8 +2576,8 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     Month = (GeneralEnumerations.Month)Date.Value.Month,
                     Year = (ushort)Date.Value.Year
                 };
-                DateStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(DateStructure));
-                Marshal.StructureToPtr(DateStructure, DateStructurePointer, false);
+                DateStructurePointer = new SafeStructPointer(Marshal.SizeOf(DateStructure));
+                DateStructurePointer.WriteToMemory<SYSTEMTIME>(DateStructure);
             }
             uint Flags = 0;
             if (string.IsNullOrWhiteSpace(FormatString))
@@ -2604,9 +2605,9 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             int RequiredSize = NLSFunctions.GetDateFormat(LocaleName, Flags, DateStructurePointer, FormatString, null, 0, null);
             if (RequiredSize is 0)
             {
-                if (DateStructurePointer != IntPtr.Zero)
+                if (!DateStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(DateStructurePointer);
+                    DateStructurePointer.Dispose();
                 }
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -2614,9 +2615,9 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 StringBuilder FormattedString = new StringBuilder(RequiredSize);
                 int CharCount = NLSFunctions.GetDateFormat(LocaleName, Flags, DateStructurePointer, FormatString, FormattedString, RequiredSize, null);
-                if (DateStructurePointer != IntPtr.Zero)
+                if (!DateStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(DateStructurePointer);
+                    DateStructurePointer.Dispose();
                 }
                 if (CharCount is 0)
                 {
@@ -2689,36 +2690,36 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 Second = (ushort)Duration.Seconds,
                 Milliseconds = (ushort)Duration.Milliseconds
             };
-            IntPtr DurationStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(DurationStructure));
-            Marshal.StructureToPtr(DurationStructure, DurationStructurePointer, false);
-            uint Flags = 0;
-            if (FormatString is null)
+            using (SafeStructPointer DurationStructurePointer = new SafeStructPointer(Marshal.SizeOf(DurationStructure)))
             {
-                if (IgnoreUserPreferences)
+                DurationStructurePointer.WriteToMemory<SYSTEMTIME>(DurationStructure);
+                uint Flags = 0;
+                if (FormatString is null)
                 {
-                    Flags = LOCALE_NOUSEROVERRIDE;
+                    if (IgnoreUserPreferences)
+                    {
+                        Flags = LOCALE_NOUSEROVERRIDE;
+                    }
                 }
-            }
-            int RequiredSize = NLSFunctions.GetDurationFormat(LocaleName, Flags, DurationStructurePointer, 0, FormatString, null, 0);
-            if (RequiredSize is 0)
-            {
-                Marshal.FreeHGlobal(DurationStructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                StringBuilder FormattedString = new StringBuilder(RequiredSize);
-                int CharCount = NLSFunctions.GetDurationFormat(LocaleName, Flags, DurationStructurePointer, 0, FormatString, FormattedString, RequiredSize);
-                Marshal.FreeHGlobal(DurationStructurePointer);
-                if (CharCount is 0)
+                int RequiredSize = NLSFunctions.GetDurationFormat(LocaleName, Flags, DurationStructurePointer, 0, FormatString, null, 0);
+                if (RequiredSize is 0)
                 {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
                 else
                 {
-                    return FormattedString.ToString();
+                    StringBuilder FormattedString = new StringBuilder(RequiredSize);
+                    int CharCount = NLSFunctions.GetDurationFormat(LocaleName, Flags, DurationStructurePointer, 0, FormatString, FormattedString, RequiredSize);
+                    if (CharCount is 0)
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
+                    else
+                    {
+                        return FormattedString.ToString();
+                    }
                 }
-            }
+            } 
         }
 
         /// <summary>
@@ -2778,18 +2779,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             int StructureSize = Marshal.SizeOf(typeof(LOCALESIGNATURE));
-            IntPtr LocaleSignatureStructurePointer = Marshal.AllocHGlobal(StructureSize);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, LocaleSignatureStructurePointer, StructureSize / UnicodeEncoding.CharSize);
-            if (CharCount is 0)
+            using (SafeStructPointer LocaleSignatureStructurePointer = new SafeStructPointer(StructureSize))
             {
-                Marshal.FreeHGlobal(LocaleSignatureStructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                LOCALESIGNATURE FontSignatureStructure = (LOCALESIGNATURE)Marshal.PtrToStructure(LocaleSignatureStructurePointer, typeof(LOCALESIGNATURE));
-                Marshal.FreeHGlobal(LocaleSignatureStructurePointer);
-                return new LocaleSignature(LocaleName, FontSignatureStructure);
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, LocaleSignatureStructurePointer, StructureSize / UnicodeEncoding.CharSize);
+                if (CharCount is 0)
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    LOCALESIGNATURE FontSignatureStructure = LocaleSignatureStructurePointer.ReadFromMemory<LOCALESIGNATURE>();
+                    return new LocaleSignature(LocaleName, FontSignatureStructure);
+                }
             }
         }
 
@@ -2849,18 +2850,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int DialingCode = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return DialingCode;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -2920,18 +2920,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int Codepage = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return Codepage;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -2991,18 +2990,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int Codepage = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return Codepage;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3062,18 +3060,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int Codepage = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return Codepage;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3133,18 +3130,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int Codepage = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return Codepage;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3204,46 +3200,47 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                int Format = Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                switch (Format)
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
                 {
-                    case 0:
-                        return "-# %";
-                    case 1:
-                        return "-#%";
-                    case 2:
-                        return "-%#";
-                    case 3:
-                        return "%-#";
-                    case 4:
-                        return "%#-";
-                    case 5:
-                        return "#-%";
-                    case 6:
-                        return "#%-";
-                    case 7:
-                        return "-% #";
-                    case 8:
-                        return "# %-";
-                    case 9:
-                        return "% #-";
-                    case 10:
-                        return "% -#";
-                    case 11:
-                        return "#- %";
-                    default:
-                        return null;
+                    int Format = Marshal.ReadInt32(DataPointer);
+                    Marshal.FreeHGlobal(DataPointer);
+                    switch (Format)
+                    {
+                        case 0:
+                            return "-# %";
+                        case 1:
+                            return "-#%";
+                        case 2:
+                            return "-%#";
+                        case 3:
+                            return "%-#";
+                        case 4:
+                            return "%#-";
+                        case 5:
+                            return "#-%";
+                        case 6:
+                            return "#%-";
+                        case 7:
+                            return "-% #";
+                        case 8:
+                            return "# %-";
+                        case 9:
+                            return "% #-";
+                        case 10:
+                            return "% -#";
+                        case 11:
+                            return "#- %";
+                        default:
+                            return null;
+                    }
                 }
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3303,18 +3300,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                NegativeSignPosition Position = (NegativeSignPosition)Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return (NegativeCurrencySignPosition)Position;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return (NegativeCurrencySignPosition)DataPointer.ReadFromMemory<NegativeSignPosition>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3374,18 +3370,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                bool Separated = Convert.ToBoolean(Marshal.ReadInt32(DataPointer));
-                Marshal.FreeHGlobal(DataPointer);
-                return Separated;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return Convert.ToBoolean(DataPointer.ReadFromMemory<int>());
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3445,18 +3440,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                bool PrecedesValue = Convert.ToBoolean(Marshal.ReadInt32(DataPointer));
-                Marshal.FreeHGlobal(DataPointer);
-                return PrecedesValue;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return Convert.ToBoolean(DataPointer.ReadFromMemory<int>());
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3516,18 +3510,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                Calendar Calendar = (Calendar)Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return (Calendar)Calendar;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<Calendar>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3587,18 +3580,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                PositivePercentageFormat Format = (PositivePercentageFormat)Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return (PositivePercentageFormat)Format;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return DataPointer.ReadFromMemory<PositivePercentageFormat>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3658,18 +3650,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                NegativeSignPosition Position = (NegativeSignPosition)Marshal.ReadInt32(DataPointer);
-                Marshal.FreeHGlobal(DataPointer);
-                return (NegativeCurrencySignPosition)Position;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return (NegativeCurrencySignPosition)DataPointer.ReadFromMemory<NegativeSignPosition>();
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3729,18 +3720,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                bool Separated = Convert.ToBoolean(Marshal.ReadInt32(DataPointer));
-                Marshal.FreeHGlobal(DataPointer);
-                return Separated;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return Convert.ToBoolean(DataPointer.ReadFromMemory<int>());
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3800,18 +3790,17 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
-            IntPtr DataPointer = Marshal.AllocHGlobal(4);
-            int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
-            if (CharCount > 0)
+            using (SafeValuePointer DataPointer = new SafeValuePointer(4))
             {
-                bool PrecedesValue = Convert.ToBoolean(Marshal.ReadInt32(DataPointer));
-                Marshal.FreeHGlobal(DataPointer);
-                return PrecedesValue;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(DataPointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                int CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, DataPointer, 2);
+                if (CharCount > 0)
+                {
+                    return Convert.ToBoolean(DataPointer.ReadFromMemory<int>());
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -3870,7 +3859,6 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             string[] DayNames = new string[7];
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SABBREVDAYNAME1;
             if (IgnoreUserPreferences)
             {
@@ -3879,18 +3867,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             for (int i = 0; i < DayNames.Length; i++)
             {
                 RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-                Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-                if (CharCount > 0)
+                using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                 {
-                    DayNames[i] = Marshal.PtrToStringUni(Buffer);
-                    EnumValue += 1;
-                    Marshal.FreeHGlobal(Buffer);
-                }
-                else
-                {
-                    Marshal.FreeHGlobal(Buffer);
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                    if (CharCount > 0)
+                    {
+                        DayNames[i] = Buffer.ReadFromMemory();
+                        EnumValue += 1;
+                    }
+                    else
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
             }
             return DayNames;
@@ -3951,7 +3939,6 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             string[] MonthNames = new string[13];
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SABBREVMONTHNAME1;
             if (IgnoreUserPreferences)
             {
@@ -3960,18 +3947,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             for (int i = 0; i < MonthNames.Length; i++)
             {
                 RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-                Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-                if (CharCount > 0)
+                using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                 {
-                    MonthNames[i] = Marshal.PtrToStringUni(Buffer);
-                    EnumValue += 1;
-                    Marshal.FreeHGlobal(Buffer);
-                }
-                else
-                {
-                    Marshal.FreeHGlobal(Buffer);
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                    if (CharCount > 0)
+                    {
+                        MonthNames[i] = Buffer.ReadFromMemory();
+                        EnumValue += 1;
+                    }
+                    else
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
             }
             return MonthNames;
@@ -4031,25 +4018,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SABBREVCTRYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string CountryName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return CountryName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string CountryName = Buffer.ReadFromMemory();
+                    return CountryName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4107,25 +4093,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SABBREVLANGNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string LangName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return LangName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string LangName = Buffer.ReadFromMemory();
+                    return LangName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4184,7 +4169,6 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             string[] DayNames = new string[7];
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SDAYNAME1;
             if (IgnoreUserPreferences)
             {
@@ -4193,18 +4177,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             for (int i = 0; i < DayNames.Length; i++)
             {
                 RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-                Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-                if (CharCount > 0)
+                using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                 {
-                    DayNames[i] = Marshal.PtrToStringUni(Buffer);
-                    EnumValue += 1;
-                    Marshal.FreeHGlobal(Buffer);
-                }
-                else
-                {
-                    Marshal.FreeHGlobal(Buffer);
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                    if (CharCount > 0)
+                    {
+                        DayNames[i] = Buffer.ReadFromMemory();
+                        EnumValue += 1;
+                    }
+                    else
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
             }
             return DayNames;
@@ -4264,25 +4248,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SDURATION;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string FormatString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return FormatString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string FormatString = Buffer.ReadFromMemory();
+                    return FormatString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4340,25 +4323,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SENGCURRNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string LangName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return LangName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string LangName = Buffer.ReadFromMemory();
+                    return LangName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4416,26 +4398,25 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SENGLISHCOUNTRYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string CountryName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return CountryName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string CountryName = Buffer.ReadFromMemory();
+                    return CountryName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+            }  
         }
 
         /// <summary>
@@ -4492,25 +4473,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SENGLISHDISPLAYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string DisplayName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return DisplayName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string DisplayName = Buffer.ReadFromMemory();
+                    return DisplayName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4568,25 +4548,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SENGLISHLANGUAGENAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string LanguageName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return LanguageName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string LanguageName = Buffer.ReadFromMemory();
+                    return LanguageName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4644,25 +4623,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SINTLSYMBOL;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Symbol = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Symbol;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Symbol = Buffer.ReadFromMemory();
+                    return Symbol;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4720,25 +4698,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SISO3166CTRYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4796,25 +4773,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SISO3166CTRYNAME2;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4872,25 +4848,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SISO639LANGNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -4948,25 +4923,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SISO639LANGNAME2;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5025,7 +4999,6 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             string[] MonthNames = new string[13];
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SMONTHNAME1;
             if (IgnoreUserPreferences)
             {
@@ -5034,18 +5007,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             for (int i = 0; i < MonthNames.Length; i++)
             {
                 RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-                Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-                if (CharCount > 0)
+                using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                 {
-                    MonthNames[i] = Marshal.PtrToStringUni(Buffer);
-                    EnumValue += 1;
-                    Marshal.FreeHGlobal(Buffer);
-                }
-                else
-                {
-                    Marshal.FreeHGlobal(Buffer);
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                    if (CharCount > 0)
+                    {
+                        MonthNames[i] = Buffer.ReadFromMemory();
+                        EnumValue += 1;
+                    }
+                    else
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
             }
             return MonthNames;
@@ -5105,25 +5078,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5181,25 +5153,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNAN;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string NANString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return NANString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string NANString = Buffer.ReadFromMemory();
+                    return NANString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5257,25 +5228,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNATIVECOUNTRYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5333,25 +5303,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNATIVECURRNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5409,25 +5378,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNATIVEDISPLAYNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5485,25 +5453,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNATIVELANGUAGENAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Name = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Name;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Name = Buffer.ReadFromMemory();
+                    return Name;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5561,25 +5528,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SNEGINFINITY;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string NegativeInfinityString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return NegativeInfinityString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string NegativeInfinityString = Buffer.ReadFromMemory();
+                    return NegativeInfinityString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5637,25 +5603,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SPERCENT;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string Symbol = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return Symbol;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string Symbol = Buffer.ReadFromMemory();
+                    return Symbol;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5713,25 +5678,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SPOSINFINITY;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string PositiveInfinityString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return PositiveInfinityString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string PositiveInfinityString = Buffer.ReadFromMemory();
+                    return PositiveInfinityString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5789,25 +5753,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SSCRIPTS;
             if (IgnoreUserPreferences)
             {
                 EnumValue |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string ScriptsList = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return ScriptsList.Split(';');
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string ScriptsList = Buffer.ReadFromMemory();
+                    return ScriptsList.Split(';');
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5865,25 +5828,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SSHORTESTAM;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string AMString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return AMString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string AMString = Buffer.ReadFromMemory();
+                    return AMString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -5942,7 +5904,6 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             string[] DayNames = new string[7];
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint EnumValue = LOCALE_SSHORTESTDAYNAME1;
             if (IgnoreUserPreferences)
             {
@@ -5951,18 +5912,18 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             for (int i = 0; i < DayNames.Length; i++)
             {
                 RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, IntPtr.Zero, 0);
-                Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
-                if (CharCount > 0)
+                using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                 {
-                    DayNames[i] = Marshal.PtrToStringUni(Buffer);
-                    EnumValue += 1;
-                    Marshal.FreeHGlobal(Buffer);
-                }
-                else
-                {
-                    Marshal.FreeHGlobal(Buffer);
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    CharCount = NLSFunctions.GetLocaleInfo(LocaleName, EnumValue, Buffer, RequiredSize);
+                    if (CharCount > 0)
+                    {
+                        DayNames[i] = Buffer.ReadFromMemory();
+                        EnumValue += 1;
+                    }
+                    else
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
             }
             return DayNames;
@@ -6022,25 +5983,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SSHORTESTPM;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string PMString = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return PMString;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string PMString = Buffer.ReadFromMemory();
+                    return PMString;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -6098,25 +6058,24 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             int RequiredSize;
             int CharCount;
-            IntPtr Buffer;
             uint Flags = LOCALE_SSORTNAME;
             if (IgnoreUserPreferences)
             {
                 Flags |= LOCALE_NOUSEROVERRIDE;
             }
             RequiredSize = NLSFunctions.GetLocaleInfo(LocaleName, Flags, IntPtr.Zero, 0);
-            Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-            CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
-            if (CharCount > 0)
+            using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
             {
-                string SortName = Marshal.PtrToStringUni(Buffer);
-                Marshal.FreeHGlobal(Buffer);
-                return SortName;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                CharCount = NLSFunctions.GetLocaleInfo(LocaleName, Flags, Buffer, RequiredSize);
+                if (CharCount > 0)
+                {
+                    string SortName = Buffer.ReadFromMemory();
+                    return SortName;
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -6278,19 +6237,19 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     }
                 }
             }
-            IntPtr FormatStructurePointer = IntPtr.Zero;
+            SafeStructPointer FormatStructurePointer = null;
             if (Format != null)
             {
                 NUMBERFMT FormatStructure = Format.ToStructure();
-                FormatStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(FormatStructure));
-                Marshal.StructureToPtr(FormatStructure, FormatStructurePointer, false);
+                FormatStructurePointer = new SafeStructPointer(Marshal.SizeOf(FormatStructure));
+                FormatStructurePointer.WriteToMemory<NUMBERFMT>(FormatStructure);
             }
             int RequiredSize = NLSFunctions.GetNumberFormat(LocaleName, IgnoreUserPreferences ? 0 : LOCALE_NOUSEROVERRIDE, StringToFormat, FormatStructurePointer, null, 0);
             if (RequiredSize is 0)
             {
-                if (FormatStructurePointer != IntPtr.Zero)
+                if (!FormatStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(FormatStructurePointer);
+                    FormatStructurePointer.Dispose();
                 }
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -6298,9 +6257,9 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 StringBuilder FormattedString = new StringBuilder(RequiredSize);
                 int CharCount = NLSFunctions.GetNumberFormat(LocaleName, IgnoreUserPreferences ? 0 : LOCALE_NOUSEROVERRIDE, StringToFormat, FormatStructurePointer, FormattedString, RequiredSize);
-                if (FormatStructurePointer != IntPtr.Zero)
+                if (!FormatStructurePointer.IsInvalid)
                 {
-                    Marshal.FreeHGlobal(FormatStructurePointer);
+                    FormatStructurePointer.Dispose();
                 }
                 if (CharCount is 0)
                 {
@@ -6393,21 +6352,21 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 throw new ArgumentException("The string is not defined in NLS.", nameof(StringToAnalyze));
             }
             CharacterTypeInfo[] TypeInfoArray = new CharacterTypeInfo[StringToAnalyze.Length];
-            IntPtr Buffer = Marshal.AllocHGlobal(2 * StringToAnalyze.Length);
-            if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE1, StringToAnalyze, StringToAnalyze.Length, Buffer))
+            using (SafeValueArrayPointer Buffer = new SafeValueArrayPointer(2, StringToAnalyze.Length))
             {
-                ushort[] TypeInfo = UtilityMethods.ReadUnmanagedArray<ushort>(Buffer, StringToAnalyze.Length);
-                Marshal.FreeHGlobal(Buffer);
-                for (int i = 0; i < TypeInfo.Length; i++)
+                if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE1, StringToAnalyze, StringToAnalyze.Length, Buffer))
                 {
-                    TypeInfoArray[i] = new CharacterTypeInfo(StringToAnalyze[i], (CharacterTypes)TypeInfo[i]);
+                    ushort[] TypeInfo = Array.ConvertAll(Buffer.ReadFromMemoryInt16(), (element) => Convert.ToUInt16(element));
+                    for (int i = 0; i < TypeInfo.Length; i++)
+                    {
+                        TypeInfoArray[i] = new CharacterTypeInfo(StringToAnalyze[i], (CharacterTypes)TypeInfo[i]);
+                    }
+                    return TypeInfoArray;
                 }
-                return TypeInfoArray;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -6430,21 +6389,21 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 throw new ArgumentException("The string is not defined in NLS.", nameof(StringToAnalyze));
             }
             CharacterLayout[] LayoutInfoArray = new CharacterLayout[StringToAnalyze.Length];
-            IntPtr Buffer = Marshal.AllocHGlobal(2 * StringToAnalyze.Length);
-            if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE2, StringToAnalyze, StringToAnalyze.Length, Buffer))
+            using (SafeValueArrayPointer Buffer = new SafeValueArrayPointer(2, StringToAnalyze.Length))
             {
-                ushort[] TypeInfo = UtilityMethods.ReadUnmanagedArray<ushort>(Buffer, StringToAnalyze.Length);
-                Marshal.FreeHGlobal(Buffer);
-                for (int i = 0; i < TypeInfo.Length; i++)
+                if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE2, StringToAnalyze, StringToAnalyze.Length, Buffer))
                 {
-                    LayoutInfoArray[i] = (CharacterLayout)TypeInfo[i];
+                    ushort[] LayoutInfo = Array.ConvertAll(Buffer.ReadFromMemoryInt16(), (element) => Convert.ToUInt16(element));
+                    for (int i = 0; i < LayoutInfo.Length; i++)
+                    {
+                        LayoutInfoArray[i] = (CharacterLayout)LayoutInfo[i];
+                    }
+                    return LayoutInfoArray;
                 }
-                return LayoutInfoArray;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -6467,21 +6426,21 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 throw new ArgumentException("The string is not defined in NLS.", nameof(StringToAnalyze));
             }
             CharacterTextProcessingInfo[] TextProcessingInfoArray = new CharacterTextProcessingInfo[StringToAnalyze.Length];
-            IntPtr Buffer = Marshal.AllocHGlobal(2 * StringToAnalyze.Length);
-            if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE1, StringToAnalyze, StringToAnalyze.Length, Buffer))
+            using (SafeValueArrayPointer Buffer = new SafeValueArrayPointer(2, StringToAnalyze.Length))
             {
-                ushort[] TextProcessingInfo = UtilityMethods.ReadUnmanagedArray<ushort>(Buffer, StringToAnalyze.Length);
-                Marshal.FreeHGlobal(Buffer);
-                for (int i = 0; i < TextProcessingInfo.Length; i++)
+                if (NLSFunctions.GetStringType(0, CharTypeInfo.CT_CTYPE3, StringToAnalyze, StringToAnalyze.Length, Buffer))
                 {
-                    TextProcessingInfoArray[i] = new CharacterTextProcessingInfo(StringToAnalyze[i], (TextProcessing)TextProcessingInfo[i]);
+                    ushort[] TextProcessingInfo = Array.ConvertAll(Buffer.ReadFromMemoryInt16(), (element) => Convert.ToUInt16(element));
+                    for (int i = 0; i < TextProcessingInfo.Length; i++)
+                    {
+                        TextProcessingInfoArray[i] = new CharacterTextProcessingInfo(StringToAnalyze[i], (TextProcessing)TextProcessingInfo[i]);
+                    }
+                    return TextProcessingInfoArray;
                 }
-                return TextProcessingInfoArray;
-            }
-            else
-            {
-                Marshal.FreeHGlobal(Buffer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -6589,7 +6548,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     }
                 }
             }
-            IntPtr TimeStructurePointer = IntPtr.Zero;
+            SafeStructPointer TimeStructurePointer = null;
             if (Time.HasValue)
             {
                 SYSTEMTIME DateStructure = new SYSTEMTIME()
@@ -6599,8 +6558,8 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                     Month = (GeneralEnumerations.Month)Time.Value.Month,
                     Year = (ushort)Time.Value.Year
                 };
-                TimeStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(DateStructure));
-                Marshal.StructureToPtr(DateStructure, TimeStructurePointer, false);
+                TimeStructurePointer = new SafeStructPointer(Marshal.SizeOf(DateStructure));
+                TimeStructurePointer.WriteToMemory<SYSTEMTIME>(DateStructure);
             }
             uint Flags = (uint)Format;
             if (IgnoreUserPreferences)
@@ -6612,7 +6571,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 if (TimeStructurePointer != IntPtr.Zero)
                 {
-                    Marshal.FreeHGlobal(TimeStructurePointer);
+                    TimeStructurePointer.Dispose();
                 }
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -6622,7 +6581,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 int CharCount = NLSFunctions.GetTimeFormat(LocaleName, Flags, TimeStructurePointer, FormatString, FormattedString, RequiredSize);
                 if (TimeStructurePointer != IntPtr.Zero)
                 {
-                    Marshal.FreeHGlobal(TimeStructurePointer);
+                    TimeStructurePointer.Dispose();
                 }
                 if (CharCount is 0)
                 {
@@ -6898,14 +6857,15 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             {
                 throw new ArgumentNullException(nameof(StringToAnalyze), "The string cannot be null or empty.");
             }
-            IntPtr VersionStructurePointer = IntPtr.Zero;
+            SafeStructPointer VersionStructurePointer = null;
             if (Version != null)
             {
-                VersionStructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(NLSVERSIONINFO)));
+                VersionStructurePointer = new SafeStructPointer(Marshal.SizeOf(typeof(NLSVERSIONINFO)));
                 NLSVERSIONINFO VersionInfo = Version.ToStructure();
-                Marshal.StructureToPtr(VersionInfo, VersionStructurePointer, false);
+                VersionStructurePointer.WriteToMemory<NLSVERSIONINFO>(VersionInfo);
             }
             bool Result = NLSFunctions.IsNLSDefinedString(SYSNLS_FUNCTION.COMPARE_STRING, 0, VersionStructurePointer, StringToAnalyze, StringToAnalyze.Length);
+            VersionStructurePointer.Dispose();
             if (!Result)
             {
                 int ErrorCode = Marshal.GetLastWin32Error();
@@ -7140,51 +7100,52 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             }
             else
             {
-                IntPtr Buffer;
                 if (MappingOptions is Enumerations.MappingOptions.GenerateSortKey)
                 {
-                    Buffer = Marshal.AllocHGlobal(RequiredSize);
-                    int ByteCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
-                    if (ByteCount == 0)
+                    using (SafeValueArrayPointer Buffer = new SafeValueArrayPointer(1, RequiredSize))
                     {
-                        throw new Win32Exception(Marshal.GetLastWin32Error());
-                    }
-                    else
-                    {
-                        byte[] SortKey = new byte[ByteCount];
-                        Marshal.Copy(Buffer, SortKey, 0, ByteCount);
-                        Marshal.FreeHGlobal(Buffer);
-                        return SortKey;
+                        int ByteCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
+                        if (ByteCount == 0)
+                        {
+                            throw new Win32Exception(Marshal.GetLastWin32Error());
+                        }
+                        else
+                        {
+                            byte[] SortKey = Buffer.ReadFromMemoryByte();
+                            return SortKey;
+                        }
                     }
                 }
                 if (MappingOptions.HasFlag(Enumerations.MappingOptions.GenerateHash))
                 {
-                    Buffer = Marshal.AllocHGlobal(4);
-                    int CharCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
-                    if (CharCount == 0)
+                    using (SafeValuePointer Buffer = new SafeValuePointer(4))
                     {
-                        throw new Win32Exception(Marshal.GetLastWin32Error());
-                    }
-                    else
-                    {
-                        int Hash = Marshal.ReadInt32(Buffer);
-                        Marshal.FreeHGlobal(Buffer);
-                        return Hash;
+                        int CharCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
+                        if (CharCount == 0)
+                        {
+                            throw new Win32Exception(Marshal.GetLastWin32Error());
+                        }
+                        else
+                        {
+                            int Hash = Buffer.ReadFromMemory<int>();
+                            return Hash;
+                        }
                     }
                 }
                 else
                 {
-                    Buffer = Marshal.AllocHGlobal(RequiredSize * UnicodeEncoding.CharSize);
-                    int CharCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
-                    if (CharCount == 0)
+                    using (SafeStringPointer Buffer = new SafeStringPointer(RequiredSize))
                     {
-                        throw new Win32Exception(Marshal.GetLastWin32Error());
-                    }
-                    else
-                    {
-                        string TransformedString = Marshal.PtrToStringUni(Buffer, RequiredSize);
-                        Marshal.FreeHGlobal(Buffer);
-                        return TransformedString;
+                        int CharCount = NLSFunctions.LCMapString(LocaleName, Options, SourceString, SourceString.Length, Buffer, RequiredSize, ref VersionInfo, IntPtr.Zero, IntPtr.Zero);
+                        if (CharCount == 0)
+                        {
+                            throw new Win32Exception(Marshal.GetLastWin32Error());
+                        }
+                        else
+                        {
+                            string TransformedString = Buffer.ReadFromMemory();
+                            return TransformedString;
+                        }
                     }
                 }
             }
@@ -7429,14 +7390,14 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
         }
 
         /// <summary>
-        /// Imposta la prima settimana dell'anno.
+        /// Imposta il sistema di misura.
         /// </summary>
-        /// <param name="System">Prima settimana dell'anno.</param>
+        /// <param name="System">Sistema di misura.</param>
         /// <exception cref="UnauthorizedAccessException"></exception>
         /// <exception cref="Win32Exception"></exception>
         public static void SetMeasurementSystem(Enumerations.MeasurementSystem System)
         {
-            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_IFIRSTWEEKOFYEAR, ((int)System).ToString()))
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_IMEASURE, ((int)System).ToString()))
             {
                 int ErrorCode = Marshal.GetLastWin32Error();
                 if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
@@ -7447,6 +7408,662 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
                 {
                     throw new Win32Exception(ErrorCode);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato dei valore monetari negativi.
+        /// </summary>
+        /// <param name="Format">Nuovo formato.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetNegativeCurrencyFormat(Enumerations.NegativeCurrencyFormat Format)
+        {
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_INEGCURR, ((int)Format).ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato dei valori negativi.
+        /// </summary>
+        /// <param name="Format">Nuovo formato.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetNegativeNumberFormat(Enumerations.NegativeNumberFormat Format)
+        {
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_INEGNUMBER, ((int)Format).ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta la dimensione predefinita della carta.
+        /// </summary>
+        /// <param name="Size">Dimensione della carta.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetDefaultPaperSize(PaperSize Size)
+        {
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_IPAPERSIZE, ((int)Size).ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il layout di lettura per il testo.
+        /// </summary>
+        /// <param name="Layout">Layout di lettura.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetTextReadingLayout(Enumerations.ReadingLayout Layout)
+        {
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_IREADINGLAYOUT, ((int)Layout).ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il designatore AM.
+        /// </summary>
+        /// <param name="Designator">Nuovo designatore AM.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetAMDesignator(string Designator)
+        {
+            if (Designator.Length > 14)
+            {
+                throw new ArgumentException("Invalid designator.", nameof(Designator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SAM, Designator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il designatore PM.
+        /// </summary>
+        /// <param name="Designator">Nuovo designatore PM.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetPMDesignator(string Designator)
+        {
+            if (Designator.Length > 14)
+            {
+                throw new ArgumentException("Invalid designator.", nameof(Designator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SPM, Designator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il simbolo della valuta locale.
+        /// </summary>
+        /// <param name="Symbol">Nuovo simbolo.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetCurrencySymbol(string Symbol)
+        {
+            if (Symbol.Length > 13)
+            {
+                throw new ArgumentException("Invalid symbol.", nameof(Symbol));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SCURRENCY, Symbol))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il separatore decimale.
+        /// </summary>
+        /// <param name="Separator">Nuovo separatore decimale.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetDecimalSeparator(string Separator)
+        {
+            if (Separator.Length > 3)
+            {
+                throw new ArgumentException("Invalid separator.", nameof(Separator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SDECIMAL, Separator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il raggruppamento delle cifre alla sinistra del decimale.
+        /// </summary>
+        /// <param name="GroupSizes">Array che indica la dimensione di ogni gruppo.</param>
+        /// <remarks><paramref name="GroupSizes"/> non può avere più di 9 elementi.</remarks>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetDigitsGrouping(int[] GroupSizes)
+        {
+            if (GroupSizes is null)
+            {
+                throw new ArgumentNullException(nameof(GroupSizes), "The array cannot be null.");
+            }
+            if (GroupSizes.Length > 9)
+            {
+                throw new ArgumentException("The array is too long, it can have a maximum of 9 values.", nameof(GroupSizes));
+            }
+            StringBuilder GroupingString = new StringBuilder(9);
+            for (int i = 0; i < GroupSizes.Length; i++)
+            {
+                GroupingString.Append(GroupSizes[i]);
+                if (i != GroupSizes.Length - 1)
+                {
+                    GroupingString.Append(';');
+                }
+            }
+            if (GroupingString.Length is 0)
+            {
+                GroupingString.Append(0);
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SGROUPING, GroupingString.ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il separatore per gli elementi di una lista.
+        /// </summary>
+        /// <param name="Separator">Nuovo separatore.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetListSeparator(string Separator)
+        {
+            if (Separator.Length > 3)
+            {
+                throw new ArgumentException("Invalid separator.", nameof(Separator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SLIST, Separator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato della data lunga.
+        /// </summary>
+        /// <param name="FormatString">Stringa di formato.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetLongDateFormat(string FormatString)
+        {
+            if (FormatString.Length > 79)
+            {
+                throw new ArgumentException("Invalid format string.", nameof(FormatString));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SLONGDATE, FormatString))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il separatore decimale per la valuta.
+        /// </summary>
+        /// <param name="Separator">Nuovo separatore decimale.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetCurrencyDecimalSeparator(string Separator)
+        {
+            if (Separator.Length > 3)
+            {
+                throw new ArgumentException("Invalid separator.", nameof(Separator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SMONDECIMALSEP, Separator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il raggruppamento delle cifre alla sinistra del decimale in un valore monetario.
+        /// </summary>
+        /// <param name="GroupSizes">Array che indica la dimensione di ogni gruppo.</param>
+        /// <remarks><paramref name="GroupSizes"/> non può avere più di 9 elementi.</remarks>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetCurrencyDigitsGrouping(int[] GroupSizes)
+        {
+            if (GroupSizes is null)
+            {
+                throw new ArgumentNullException(nameof(GroupSizes), "The array cannot be null.");
+            }
+            if (GroupSizes.Length > 9)
+            {
+                throw new ArgumentException("The array is too long, it can have a maximum of 9 values.", nameof(GroupSizes));
+            }
+            StringBuilder GroupingString = new StringBuilder(9);
+            for (int i = 0; i < GroupSizes.Length; i++)
+            {
+                GroupingString.Append(GroupSizes[i]);
+                if (i != GroupSizes.Length - 1)
+                {
+                    GroupingString.Append(';');
+                }
+            }
+            if (GroupingString.Length is 0)
+            {
+                GroupingString.Append(0);
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SMONGROUPING, GroupingString.ToString()))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il separatore delle migliaia per un valore monetario.
+        /// </summary>
+        /// <param name="Separator">Nuovo separatore.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetCurrencyThousandSeparator(string Separator)
+        {
+            if (Separator.Length > 3)
+            {
+                throw new ArgumentException("Invalid separator.", nameof(Separator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SMONTHOUSANDSEP, Separator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta le cifre native equivalenti ai numero da 0 a 9.
+        /// </summary>
+        /// <param name="NativeDigits">Cifre native equivalenti.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetNativeDigits(string NativeDigits)
+        {
+            if (NativeDigits.Length > 10)
+            {
+                throw new ArgumentException("Invalid value.", nameof(NativeDigits));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SNATIVEDIGITS, NativeDigits))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il segno positivo.
+        /// </summary>
+        /// <param name="Sign">Nuovo segno positivo.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetPositiveSign(string Sign)
+        {
+            if (Sign.Length > 4)
+            {
+                throw new ArgumentException("Invalid sign.", nameof(Sign));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SPOSITIVESIGN, Sign))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato della data corta.
+        /// </summary>
+        /// <param name="FormatString">Stringa di formato.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetShortDateFormat(string FormatString)
+        {
+            if (FormatString.Length > 79)
+            {
+                throw new ArgumentException("Invalid format string.", nameof(FormatString));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SSHORTDATE, FormatString))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato dell'ora corta.
+        /// </summary>
+        /// <param name="FormatString">Stringa di formato.</param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetShortTimeFormat(string FormatString)
+        {
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SSHORTTIME, FormatString))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il separatore delle migliaia.
+        /// </summary>
+        /// <param name="Separator">Nuovo separatore.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetThousandSeparator(string Separator)
+        {
+            if (Separator.Length > 3)
+            {
+                throw new ArgumentException("Invalid separator.", nameof(Separator));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_STHOUSAND, Separator))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato dell'ora.
+        /// </summary>
+        /// <param name="FormatString">Stringa di formato.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetTimeFormat(string FormatString)
+        {
+            if (FormatString.Length > 79)
+            {
+                throw new ArgumentException("Invalid format string.", nameof(FormatString));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_STIMEFORMAT, FormatString))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il formato della data anno/mese.
+        /// </summary>
+        /// <param name="FormatString">Stringa di formato.</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetYearMonthDateFormat(string FormatString)
+        {
+            if (FormatString.Length > 79)
+            {
+                throw new ArgumentException("Invalid format string.", nameof(FormatString));
+            }
+            if (!NLSFunctions.SetLocaleInfo(0, LOCALE_SYEARMONTH, FormatString))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Imposta il codice a due lettere ISO 3166-1 o il codice numerico UN M.49 per la località geografica dell'utente corrente.
+        /// </summary>
+        /// <param name="GeoName">Codice a due lettere ISO 3166-1 o il codice numerico UN M.49.</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="UnauthorizedAccessException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static void SetUserGeoName(string GeoName)
+        {
+            if (string.IsNullOrWhiteSpace(GeoName))
+            {
+                throw new ArgumentNullException(nameof(GeoName), "Invalid name.");
+            }
+            if (!NLSFunctions.SetUserGeoName(GeoName))
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode is ERROR_ACCESS_DISABLED_BY_POLICY)
+                {
+                    throw new UnauthorizedAccessException("Operation forbidden by group policy.");
+                }
+                else
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determina se gli script presenti in una stringa sono supportati da una località.
+        /// </summary>
+        /// <param name="LocaleName">Nome località.</param>
+        /// <param name="String">Stringa di cui enumerare gli script.</param>
+        /// <param name="AlwaysIncludeLatin">Indica se includere sempre lo script Latino negli script presenti nella stringa.</param>
+        /// <param name="IncludeInheritedAndCommonScripts">Indica se includere gli script ereditati e comuni negli script presenti nella stringa.</param>
+        /// <param name="IsLanguageTag">Indica se <paramref name="LocaleName"/> è un tag lingua.</param>
+        /// <param name="UseInvariantLocale">Indica se usare la località invariante.</param>
+        /// <param name="UseSystemDefaultLocale">Indica se usare la località predefinita di sistema.</param>
+        /// <param name="UseUserDefaultLocale">Indica se usare la località predefinita dell'utente.</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        public static bool AreStringScriptsSupportedByLocale(string LocaleName, string String, bool AlwaysIncludeLatin, bool IncludeInheritedAndCommonScripts, bool IsLanguageTag, bool UseInvariantLocale, bool UseSystemDefaultLocale, bool UseUserDefaultLocale)
+        {
+            if (string.IsNullOrWhiteSpace(String))
+            {
+                throw new ArgumentNullException(nameof(String), "The string cannot be null or empty.");
+            }
+            string[] LocaleScripts = GetScriptsList(LocaleName, false, IsLanguageTag, UseInvariantLocale, UseSystemDefaultLocale, UseUserDefaultLocale);
+            string[] StringScripts = GetStringScripts(String, IncludeInheritedAndCommonScripts);
+            StringBuilder LocaleScriptsString  = new StringBuilder();
+            foreach (string script in LocaleScripts)
+            {
+                LocaleScriptsString.Append(script).Append(';');
+            }
+            StringBuilder StringScriptsString = new StringBuilder();
+            foreach (string script in StringScripts)
+            {
+                StringScriptsString.Append(script).Append(";");
+            }
+            bool Result = NLSFunctions.VerifyScripts(AlwaysIncludeLatin ? (uint)VS_ALLOW_LATIN : 0, LocaleScriptsString.ToString(), LocaleScriptsString.Length, StringScriptsString.ToString(), StringScriptsString.Length);
+            if (!Result)
+            {
+                int ErrorCode = Marshal.GetLastWin32Error();
+                if (ErrorCode != ERROR_SUCCESS)
+                {
+                    throw new Win32Exception(ErrorCode);
+                }
+                else
+                {
+                    return Result;
+                }
+            }
+            else
+            {
+                return Result;
             }
         }
     }

@@ -7,7 +7,9 @@ using static WindowsAPI.AccessibilityWrapper.Enumerations;
 using static WindowsAPI.AccessibilityWrapper.Native.AccessibilityEnumerations;
 using static WindowsAPI.AccessibilityWrapper.Native.AccessibilityStructures;
 using static WindowsAPI.AccessibilityWrapper.Native.AccessibilityFunctions;
-using static WindowsAPI.DiagnosticsWrapper.Native.Win32ErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.Win32ErrorConstants;
+using WindowsAPI.SafeHandles;
+using System.Drawing.Design;
 
 namespace WindowsAPI.AccessibilityWrapper
 {
@@ -93,18 +95,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(ACCESSTIMEOUT))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETACCESSTIMEOUT, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new AccessTimeoutInfo(Structure);
+                Pointer.WriteToMemory<ACCESSTIMEOUT>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETACCESSTIMEOUT, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<ACCESSTIMEOUT>();
+                    return new AccessTimeoutInfo(Structure);
+                }
             }
         }
 
@@ -127,12 +129,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             ACCESSTIMEOUT Structure = TimeoutInfo.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETACCESSTIMEOUT, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<ACCESSTIMEOUT>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETACCESSTIMEOUT, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -147,18 +150,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(AUDIODESCRIPTION))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETAUDIODESCRIPTION, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new AudioDescriptionInfo(Structure);
+                Pointer.WriteToMemory<AUDIODESCRIPTION>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETAUDIODESCRIPTION, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<AUDIODESCRIPTION>();
+                    return new AudioDescriptionInfo(Structure);
+                }
             }
         }
 
@@ -181,12 +184,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             AUDIODESCRIPTION Structure = Data.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETAUDIODESCRIPTION, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<AUDIODESCRIPTION>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETAUDIODESCRIPTION, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -197,18 +201,18 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsClientAreaAnimationEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETCLIENTAREAANIMATION, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETCLIENTAREAANIMATION, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
+            } 
         }
 
         /// <summary>
@@ -265,18 +269,18 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsOverlappedContentEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETDISABLEOVERLAPPEDCONTENT, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETDISABLEOVERLAPPEDCONTENT, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
+            }  
         }
 
         /// <summary>
@@ -338,18 +342,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(FILTERKEYS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFILTERKEYS, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new FilterKeysInfo(Structure);
+                Pointer.WriteToMemory<FILTERKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFILTERKEYS, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<FILTERKEYS>();
+                    return new FilterKeysInfo(Structure);
+                }
             }
         }
 
@@ -372,12 +376,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             FILTERKEYS Structure = FilterKeysInfo.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETFILTERKEYS, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<FILTERKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFILTERKEYS, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -388,17 +393,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static int GetFocusBorderHeight()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFOCUSBORDERHEIGHT, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                int Value = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFOCUSBORDERHEIGHT, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    int Value = Pointer.ReadFromMemory<int>();
+                    return Value;
+                }
             }
         }
 
@@ -409,17 +414,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static int GetFocusBorderWidth()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFOCUSBORDERWIDTH, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                int Value = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETFOCUSBORDERWIDTH, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    int Value = Pointer.ReadFromMemory<int>();
+                    return Value;
+                }
             }
         }
 
@@ -481,18 +486,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(HIGHCONTRAST))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETHIGHCONTRAST, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new HighContrastInfo(Structure);
+                Pointer.WriteToMemory<HIGHCONTRAST>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETHIGHCONTRAST, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<HIGHCONTRAST>();
+                    return new HighContrastInfo(Structure);
+                }
             }
         }
 
@@ -521,12 +526,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 throw new ArgumentException("Feature must be disabled to prevent theme change effects.", nameof(NoThemeChange));
             }
             HIGHCONTRAST Structure = Info.ToStruct(NoThemeChange);
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETHIGHCONTRAST, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<HIGHCONTRAST>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETHIGHCONTRAST, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -537,18 +543,18 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static int GetPopupDuration()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMESSAGEDURATION, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                int Value = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMESSAGEDURATION, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    int Value = Pointer.ReadFromMemory<int>();
+                    return Value;
+                }
+            } 
         }
 
         /// <summary>
@@ -583,17 +589,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsMouseClickLockEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSECLICKLOCK, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSECLICKLOCK, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
             }
         }
 
@@ -652,18 +658,18 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static int GetMouseClickLockTime()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSECLICKLOCKTIME, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                int Value = Marshal.ReadInt32(ValuePointer) / 1000;
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSECLICKLOCKTIME, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    int Value = Pointer.ReadFromMemory<int>() / 1000;
+                    return Value;
+                }
+            } 
         }
 
         /// <summary>
@@ -684,11 +690,13 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Time * 1000);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETMOUSECLICKLOCKTIME, 0, ValuePointer, Option))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory(Time * 1000);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETMOUSECLICKLOCKTIME, 0, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -703,18 +711,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(MOUSEKEYS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSEKEYS, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new MouseKeysInfo(Structure);
+                Pointer.WriteToMemory<MOUSEKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSEKEYS, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<MOUSEKEYS>();
+                    return new MouseKeysInfo(Structure);
+                }
             }
         }
 
@@ -737,12 +745,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             MOUSEKEYS Structure = Info.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETMOUSEKEYS, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<MOUSEKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETMOUSEKEYS, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -753,18 +762,18 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsMouseSonarEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSESONAR, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
-            }
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSESONAR, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
+            }  
         }
 
         /// <summary>
@@ -823,17 +832,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsMouseVanishEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSEVANISH, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETMOUSEVANISH, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
             }
         }
 
@@ -892,17 +901,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsScreenReviewerAppRunning()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSCREENREADER, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSCREENREADER, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
             }
         }
 
@@ -937,17 +946,17 @@ namespace WindowsAPI.AccessibilityWrapper
         /// <exception cref="Win32Exception"></exception>
         public static bool IsShowSoundsEnabled()
         {
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSHOWSOUNDS, 0, ValuePointer, 0))
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.FreeHGlobal(ValuePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                bool Value = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return Value;
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSHOWSOUNDS, 0, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    bool Value = Pointer.ReadFromMemory<bool>();
+                    return Value;
+                }
             }
         }
 
@@ -1008,18 +1017,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(SOUNDSENTRY))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSOUNDSENTRY, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new SoundSentryInfo(Structure);
+                Pointer.WriteToMemory<SOUNDSENTRY>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSOUNDSENTRY, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<SOUNDSENTRY>();
+                    return new SoundSentryInfo(Structure);
+                }
             }
         }
 
@@ -1042,12 +1051,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             SOUNDSENTRY Structure = Info.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETSOUNDSENTRY, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<SOUNDSENTRY>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETSOUNDSENTRY, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -1062,18 +1072,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(STICKYKEYS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSTICKYKEYS, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new StickyKeysInfo(Structure);
+                Pointer.WriteToMemory<STICKYKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETSTICKYKEYS, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<STICKYKEYS>();
+                    return new StickyKeysInfo(Structure);
+                }
             }
         }
 
@@ -1096,12 +1106,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             STICKYKEYS Structure = Info.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETSTICKYKEYS, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<STICKYKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETSTICKYKEYS, Structure.Size, Pointer, Option))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -1116,18 +1127,18 @@ namespace WindowsAPI.AccessibilityWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(TOGGLEKEYS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_GETTOGGLEKEYS, Structure.Size, StructurePointer, 0))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-            else
-            {
-                Marshal.PtrToStructure(StructurePointer, Structure);
-                Marshal.FreeHGlobal(StructurePointer);
-                return new ToggleKeysInfo(Structure);
+                Pointer.WriteToMemory<TOGGLEKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_GETTOGGLEKEYS, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                else
+                {
+                    Structure = Pointer.ReadFromMemory<TOGGLEKEYS>();
+                    return new ToggleKeysInfo(Structure);
+                }
             }
         }
 
@@ -1150,12 +1161,13 @@ namespace WindowsAPI.AccessibilityWrapper
                 Option = UserProfileUpdateOptions.SPIF_SENDWININICHANGE;
             }
             TOGGLEKEYS Structure = Info.ToStruct();
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (!SystemParametersInfo(AccessibilityParameter.SPI_SETTOGGLEKEYS, Structure.Size, StructurePointer, Option))
+            using (SafeStructPointer Pointer = new SafeStructPointer((int)Structure.Size))
             {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                Pointer.WriteToMemory<TOGGLEKEYS>(Structure);
+                if (!SystemParametersInfo(AccessibilityParameter.SPI_SETTOGGLEKEYS, Structure.Size, Pointer, 0))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
     }

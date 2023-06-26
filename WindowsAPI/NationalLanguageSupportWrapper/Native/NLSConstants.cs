@@ -386,43 +386,43 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <summary>
         /// Nome nativo abbreviato per Lunedì.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME1 = 49;
 
         /// <summary>
         /// Nome nativo abbreviato per Martedì.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME2 = 50;
 
         /// <summary>
         /// Nome nativo abbreviato per Mercoledì.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME3 = 51;
 
         /// <summary>
         /// Nome nativo abbreviato per Giovedì.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME4 = 52;
 
         /// <summary>
         /// Nome nativo abbreviato per Venerdì.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME5 = 53;
 
         /// <summary>
         /// Nome nativo abbreviato per Sabato.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME6 = 54;
 
         /// <summary>
         /// Nome nativo abbreviato per Domenica.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVDAYNAME7 = 55;
 
         /// <summary>
@@ -433,61 +433,61 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <summary>
         /// Nome nativo abbreviato per Gennaio.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME1 = 68;
 
         /// <summary>
         /// Nome nativo abbreviato per Febbraio.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME2 = 69;
 
         /// <summary>
         /// Nome nativo abbreviato per Marzo.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME3 = 70;
 
         /// <summary>
         /// Nome nativo abbreviato per Aprile.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME4 = 71;
 
         /// <summary>
         /// Nome nativo abbreviato per Maggio.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME5 = 72;
 
         /// <summary>
         /// Nome nativo abbreviato per Giugno.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME6 = 73;
 
         /// <summary>
         /// Nome nativo abbreviato per Luglio.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME7 = 74;
 
         /// <summary>
         /// Nome nativo abbreviato per Agosto.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME8 = 75;
 
         /// <summary>
         /// Nome nativo abbreviato per Settembre.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME9 = 76;
 
         /// <summary>
         /// Nome nativo abbreviato per Ottobre.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME10 = 77;
 
         /// <summary>
@@ -499,13 +499,13 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <summary>
         /// Nome nativo abbreviato per Dicembre.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME12 = 79;
 
         /// <summary>
         /// Nome nativo abbreviato per il tredicesimo mese, se esiste.
         /// </summary>
-        /// <remarks>La lunghezza massima di questa string è di 80 caratteri, incluso il carattere nullo finale.</remarks>
+        /// <remarks>La lunghezza massima di questa stringa è di 80 caratteri, incluso il carattere nullo finale.</remarks>
         internal const int LOCALE_SABBREVMONTHNAME13 = 4111;
 
         /// <summary>
@@ -905,6 +905,16 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// Nome completo localizzato dell'ordinamento per la località.
         /// </summary>
         internal const int LOCALE_SSORTNAME = 4115;
+
+        /// <summary>
+        /// Forma delle cifre.
+        /// </summary>
+        internal const int LOCALE_IDIGITSUBSTITUTION = 4116;
+
+        /// <summary>
+        /// Dimensione predefinita della carta.
+        /// </summary>
+        internal const int LOCALE_IPAPERSIZE = 4106;
 
         /// <summary>
         /// Includi script ereditati e comuni nella lista.

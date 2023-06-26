@@ -4,10 +4,10 @@ using System.Text;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSEnumerations;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSStructures;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSConstants;
-using static WindowsAPI.DiagnosticsWrapper.Native.Win32ErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.Win32ErrorConstants;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSCallbacks;
 using static WindowsAPI.General.Native.GeneralStructures;
-using static WindowsAPI.DiagnosticsWrapper.Native.ErrorHandling.ErrorHandlingFunctions;
+using static WindowsAPI.ErrorHandlingWrapper.Native.ErrorHandlingFunctions;
 
 namespace WindowsAPI.NationalLanguageSupportWrapper.Native
 {
@@ -786,7 +786,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// Mappa i caratteri di una stringa in input usando la trasformazione specificata, o genera una chiave di ordinamento.
         /// </summary>
         /// <param name="LocaleName">Nome località.</param>
-        /// <param name="MappingOptions">Trasformazione.</param>
+        /// <param name="Options">Opzioni.</param>
         /// <param name="SourceString">Stringa originale.</param>
         /// <param name="SourceStringSize">Dimensione, in caratteri, di <paramref name="SourceString"/>.</param>
         /// <param name="DestinationString">Stringa risultato della mappatura.</param>
@@ -799,6 +799,10 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <see cref="LOCALE_NAME_INVARIANT"/><br/>
         /// <see cref="LOCALE_NAME_SYSTEM_DEFAULT"/><br/>
         /// <see cref="LOCALE_NAME_USER_DEFAULT"/><br/><br/>
+        /// <paramref name="Options"/> può includere i valori dalle seguenti enumerazioni:<br/><br/>
+        /// <see cref="MappingOptions"/><br/>
+        /// <see cref="ComparisonOptions"/><br/>
+        /// <see cref="SortingOptions"/><br/><br/>
         /// <paramref name="SourceString"/> non può essere una stringa vuota.<br/><br/>
         /// <paramref name="SourceStringSize"/> può includere il carattere nullo finale ma non è necessario, se è incluso il comportamento della funzione non ne è influenzato.<br/>
         /// Questo parametro può essere impostato a un numero negativo per indicare che <paramref name="SourceString"/> termina con un carattere nullo, in questo caso, se la funzione viene utilizzata per la mappatura di <paramref name="SourceString"/>, la dimensione viene calcolata automaticamente e <paramref name="DestinationString"/> termina con un carattere nullo.<br/>
@@ -817,7 +821,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <see cref="ERROR_INVALID_FLAGS"/>: <paramref name="MappingOptions"/> non è valido<br/>
         /// <see cref="ERROR_INVALID_PARAMETER"/>: uno dei parametri non è valido</remarks>
         [DllImport("Kernel32.dll", EntryPoint = "LCMapStringEx", SetLastError = true, CharSet = CharSet.Unicode)]
-        internal static extern int LCMapString(string LocaleName, MappingOptions MappingOptions, string SourceString, int SourceStringSize, StringBuilder DestinationString, int DestinationStringSize, ref NLSVERSIONINFO VersionInformation, IntPtr Reserved, IntPtr SortHandle);
+        internal static extern int LCMapString(string LocaleName, uint Options, string SourceString, int SourceStringSize, IntPtr DestinationString, int DestinationStringSize, ref NLSVERSIONINFO VersionInformation, IntPtr Reserved, IntPtr SortHandle);
 
         /// <summary>
         /// Converte un nome località in un identificatore località.
@@ -874,7 +878,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <param name="LocaleID">ID località.</param>
         /// <param name="Calendar">Identificatore calendario.</param>
         /// <param name="Data">Informazione da impostare.</param>
-        /// <param name="FormatString">Stringa di formato.</param>
+        /// <param name="Value">Valore dell'informazione.</param>
         /// <returns>Diverso da 0 se l'operazione è riuscita, 0 altrimenti.</returns>
         /// <remarks><paramref name="LocaleID"/> può avere anche i seguenti valori:<br/><br/>
         /// <see cref="LOCALE_INVARIANT"/><br/>
@@ -891,7 +895,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// La funzione influenza solo le impostazioni utente, non imposta le impostazioni predefinite di sistema.</remarks>
         [DllImport("Kernel32.dll", EntryPoint = "SetCalendarInfoW", SetLastError = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool SetCalendarInfo(uint LocaleID, CalendarID Calendar, CalendarData Data, string FormatString);
+        internal static extern bool SetCalendarInfo(uint LocaleID, CalendarID Calendar, CalendarData Data, string Value);
 
         /// <summary>
         /// Imposta un informazione sulla località.
@@ -910,7 +914,7 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// In caso di errore la funzione può impostare i seguenti codici di errore:<br/><br/>
         /// <see cref="ERROR_ACCESS_DISABLED_BY_POLICY"/>: criteri di gruppo impedisce l'esecuzione di questa operazione<br/>
         /// <see cref="ERROR_INVALID_ACCESS"/>: codice di accesso non valido<br/>
-        /// <see cref="ERROR_INVALID_FLAGS"/>: <paramref name="Data"/> o <paramref name="Calendar"/> non è valido<br/>
+        /// <see cref="ERROR_INVALID_FLAGS"/>: <paramref name="LocaleData"/> non è valido<br/>
         /// <see cref="ERROR_INVALID_PARAMETER"/>: uno dei parametri non è valido<br/><br/>
         /// La funzione influenza solo le impostazioni utente, non imposta le impostazioni predefinite di sistema.<br/><br/>
         /// Questa funzione influenza il comportamento delle altre applicazioni.</remarks>
@@ -961,8 +965,8 @@ namespace WindowsAPI.NationalLanguageSupportWrapper.Native
         /// <remarks><paramref name="LocaleScriptsSize"/> e <paramref name="TestScriptsSize"/> possono avere valore -1 se le relative stringhe terminano con un carattere nullo.<br/>
         /// Nessuno dei due parametri può essere impostato a 0.<br/><br/>
         /// La funzione restituisce true anche se <paramref name="TestScripts"/> contiene più script di <paramref name="LocaleScripts"/>, sempre che tutti gli script di test siano contenuti in <paramref name="LocaleScripts"/>.<br/><br/>
+        /// Se <paramref name="Flags"/> è impostato a <see cref="VS_ALLOW_LATIN"/>, la funzione si comporta come se "Latn;" si trova in <paramref name="TestScripts"/>.<br/><br/>
         /// La funzione restituisce false anche in caso di errore, per verificare la riuscita dell'operazione recuperare l'ultimo codice di errore che può essere anche uno dei seguenti:<br/><br/>
-        /// Se <paramref name="Flags"/> è impostato a <see cref="VS_ALLOW_LATIN"/>, la funzione si comporta come se "Latn;" si trova in <paramref name="LocaleScripts"/>.
         /// <see cref="ERROR_INVALID_FLAGS"/>: <paramref name="Flags"/> non è valido<br/>
         /// <see cref="ERROR_INVALID_PARAMETER"/>: uno dei parametri non è valido<br/>
         /// <see cref="ERROR_SUCCESS"/>: l'operazione è stata completata ma non ha prodotto risultati.</remarks>

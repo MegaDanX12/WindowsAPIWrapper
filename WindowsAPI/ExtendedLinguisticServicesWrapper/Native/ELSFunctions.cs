@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSStructures;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 
 namespace WindowsAPI.ExtendedLinguisticServicesWrapper.Native
 {

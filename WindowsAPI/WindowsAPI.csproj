@@ -16,22 +16,23 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -78,7 +79,7 @@
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMFunctions.cs" />
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMMessages.cs" />
     <Compile Include="DesktopWindowManagerWrapper\Native\DWMStructures.cs" />
-    <Compile Include="DiagnosticsWrapper\Native\ErrorHandling\ErrorHandlingFunctions.cs" />
+    <Compile Include="ErrorHandlingWrapper\Native\ErrorHandlingFunctions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Callbacks.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\DataClasses\ServiceEnumerationOptions.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\DataClasses\ServiceInfo.cs" />
@@ -93,13 +94,16 @@
     <Compile Include="General\Native\GeneralEnumerations.cs" />
     <Compile Include="General\Native\Macros.cs" />
     <Compile Include="DiagnosticsWrapper\Native\HRESULTErrorConstants.cs" />
-    <Compile Include="DiagnosticsWrapper\Native\ProcessesAndThreads\ProcessesAndThreadsFunctions.cs" />
+    <Compile Include="MemoryManagementWrapper\Native\MemoryManagementFunctions.cs" />
+    <Compile Include="ProcessStatusWrapper\Native\ProcessesAndThreadsFunctions.cs" />
     <Compile Include="DiagnosticsWrapper\Native\Win32ErrorConstants.cs" />
-    <Compile Include="DiagnosticsWrapper\ProcessesAndThreads\ProcessesAndThreads.cs" />
+    <Compile Include="ProcessStatusWrapper\ProcessesAndThreads\ProcessesAndThreads.cs" />
     <Compile Include="ExtendedLinguisticServicesWrapper\Native\ELSStructures.cs" />
     <Compile Include="General\Native\GeneralStructures.cs" />
     <Compile Include="HighDPIWrapper\DataClasses\DialogControlDPIChangeBehavior.cs" />
     <Compile Include="HighDPIWrapper\DataClasses\DialogDPIChangeBehavior.cs" />
+    <Compile Include="LegacyUserInteractionWrapper\MouseInput\MouseInputEnumerations.cs" />
+    <Compile Include="LegacyUserInteractionWrapper\MouseInput\MouseInputNotifications.cs" />
     <Compile Include="MultilingualUserInterfaceWrapper\Callbacks.cs" />
     <Compile Include="MultilingualUserInterfaceWrapper\DataClasses\MUIFileInfo.cs" />
     <Compile Include="MultilingualUserInterfaceWrapper\DataClasses\UILanguageInfo.cs" />
@@ -127,8 +131,59 @@
     <Compile Include="NationalLanguageSupportWrapper\Native\NLSFunctions.cs" />
     <Compile Include="NationalLanguageSupportWrapper\Native\NLSStructures.cs" />
     <Compile Include="NationalLanguageSupportWrapper\NLS.cs" />
+    <Compile Include="SafeHandles\SafeBitmapHandle.cs" />
+    <Compile Include="SafeHandles\SafeDwmThumbnailHandle.cs" />
+    <Compile Include="SafeHandles\SafeGraphicsHandle.cs" />
+    <Compile Include="SafeHandles\SafeIconHandle.cs" />
+    <Compile Include="SafeHandles\SafeImageListHandle.cs" />
+    <Compile Include="SafeHandles\SafeMemoryPointer.cs" />
+    <Compile Include="SafeHandles\SafeMultistringPointer.cs" />
+    <Compile Include="SafeHandles\SafeStringPointer.cs" />
+    <Compile Include="SafeHandles\SafeStructPointer.cs" />
+    <Compile Include="SafeHandles\SafeValueArrayPointer.cs" />
+    <Compile Include="SafeHandles\SafeValuePointer.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Buttons\Buttons.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Buttons\DataClasses\ButtonStateInfo.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Buttons\DataClasses\ImageListInfo.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Buttons\DataClasses\SplitButtonInfo.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Buttons\Enumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Carets\Caret.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\ComboBoxes\ComboBoxes.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\ComboBoxes\DataClasses\ComboboxStatusInfo.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\ComboBoxes\Enumerations.cs" />
     <Compile Include="UserInterfaceElementsWrapper\Icons\DataClasses\IconMetrics.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\ImageLists\Enumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonConstants.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonEnumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonMessages.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonNotifications.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Buttons\ButtonStructures.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Carets\CaretFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ComboBoxes\ComboBoxEnumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ComboBoxes\ComboBoxFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ComboBoxes\ComboBoxMessages.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ComboBoxes\ComboBoxNotifications.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ComboBoxes\ComboBoxStructures.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonControls\CommonControlsEnumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonControls\CommonControlsNotifications.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonControls\CommonControlsStructures.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonDialogs\CommonDialogCallbacks.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonDialogs\CommonDialogEnumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonDialogs\CommonDialogFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\CommonDialogs\CommonDialogStructures.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\DialogBoxes\DialogBoxMessages.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Icons\IconFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ImageLists\ImageListEnumerations.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\ImageLists\ImageListFunctions.cs" />
+    <Compile Include="UserInterfaceElementsWrapper\Native\Menus\MenuNotifications.cs" />
     <Compile Include="WindowsAndMessagesWrapper\Configuration\DataClasses\NonClientMetrics.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Messages\Messages.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Native\Messages\MessageConstants.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Native\Messages\MessageFunctions.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Native\WindowClasses\WindowClassesConstants.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Native\WindowClasses\WindowClassesEnumerations.cs" />
+    <Compile Include="WindowsAndMessagesWrapper\Native\WindowClasses\WindowClassesFunctions.cs" />
     <Compile Include="WindowsGDIWrapper\FontAndText\DataClasses\FontAttributes.cs" />
     <Compile Include="HighDPIWrapper\Enumerations.cs" />
     <Compile Include="HighDPIWrapper\HighDPI.cs" />
@@ -151,6 +206,9 @@
     <Compile Include="WindowsAndMessagesWrapper\Window\Windows.cs" />
     <Compile Include="WindowsGDIWrapper\DeviceContexts\DeviceContexts.cs" />
     <Compile Include="WindowsGDIWrapper\FontAndText\Enumerations.cs" />
+    <Compile Include="WindowsGDIWrapper\Native\Bitmaps\BitmapEnumerations.cs" />
+    <Compile Include="WindowsGDIWrapper\Native\Bitmaps\BitmapFunctions.cs" />
+    <Compile Include="WindowsGDIWrapper\Native\Bitmaps\BitmapStructures.cs" />
     <Compile Include="WindowsGDIWrapper\Native\DeviceContexts\DeviceContextsFunctions.cs" />
     <Compile Include="WindowsGDIWrapper\Native\FontAndText\FontAndTextConstants.cs" />
     <Compile Include="WindowsGDIWrapper\Native\FontAndText\FontAndTextEnumerations.cs" />

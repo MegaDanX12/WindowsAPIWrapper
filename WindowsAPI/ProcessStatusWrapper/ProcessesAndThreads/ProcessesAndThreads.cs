@@ -1,11 +1,11 @@
-﻿using WindowsAPI.DiagnosticsWrapper.Native.ProcessesAndThreads;
+﻿using WindowsAPI.ErrorHandlingWrapper.Native;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WindowsAPI.DiagnosticsWrapper.ProcessesAndThreads
+namespace WindowsAPI.ErrorHandlingWrapper.ProcessesAndThreads
 {
     /// <summary>
     /// Metodi per la gestione dei processi e dei thread.

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using static WindowsAPI.DiagnosticsWrapper.Native.Win32ErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.Win32ErrorConstants;
 
 namespace WindowsAPI.PackagingDeploymentQueryWrapper.Native.Query
 {

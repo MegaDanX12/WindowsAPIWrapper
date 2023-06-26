@@ -1,4 +1,4 @@
-﻿namespace WindowsAPI.DiagnosticsWrapper.Native
+﻿namespace WindowsAPI.ErrorHandlingWrapper.Native
 {
     /// <summary>
     /// Errori Win32.
@@ -94,5 +94,10 @@
         /// Il codice di accesso non è valido.
         /// </summary>
         internal const int ERROR_INVALID_ACCESS = 12;
+
+        /// <summary>
+        /// Richiesta non supportata.
+        /// </summary>
+        internal const int ERROR_NOT_SUPPORTED = 50;
     }
 }

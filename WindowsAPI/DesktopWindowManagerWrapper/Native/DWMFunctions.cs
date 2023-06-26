@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using static WindowsAPI.DesktopWindowManagerWrapper.Native.DWMEnumerations;
 using static WindowsAPI.DesktopWindowManagerWrapper.Native.DWMStructures;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 using static WindowsAPI.General.Native.GeneralStructures;
 
 namespace WindowsAPI.DesktopWindowManagerWrapper.Native

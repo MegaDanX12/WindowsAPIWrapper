@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using WindowsAPI.ExtendedLinguisticServicesWrapper.DataClasses;
 using WindowsAPI.ExtendedLinguisticServicesWrapper.Native;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
-using static WindowsAPI.ExtendedLinguisticServicesWrapper.Callbacks;
-using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSCallbacks;
+using WindowsAPI.SafeHandles;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSStructures;
 
 namespace WindowsAPI.ExtendedLinguisticServicesWrapper
@@ -49,25 +44,26 @@ namespace WindowsAPI.ExtendedLinguisticServicesWrapper
             else
             {
                 MAPPING_ENUM_OPTIONS Options = EnumerationOptions.ToStructure();
-                IntPtr StructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(Options));
-                Marshal.StructureToPtr(Options, StructurePointer, false);
-                Result = ELSFunctions.GetServices(StructurePointer, out IntPtr ServicesDataPointer, out uint ServicesCount);
-                Marshal.FreeHGlobal(StructurePointer);
-                if (Result is S_OK)
+                using (SafeStructPointer StructurePointer = new SafeStructPointer(Marshal.SizeOf(Options)))
                 {
-                    ELSMetadata.ServicesArrayPointer = ServicesDataPointer;
-                    MAPPING_SERVICE_INFO[] ServiceStructures = UtilityMethods.ReadUnmanagedArray<MAPPING_SERVICE_INFO>(ServicesDataPointer, (int)ServicesCount);
-                    ServiceInfo[] Services = new ServiceInfo[ServiceStructures.Length];
-                    for (int i = 0; i < Services.Length; i++)
+                    StructurePointer.WriteToMemory<MAPPING_ENUM_OPTIONS>(Options);
+                    Result = ELSFunctions.GetServices(StructurePointer, out IntPtr ServicesDataPointer, out uint ServicesCount);
+                    if (Result is S_OK)
                     {
-                        Services[i] = new ServiceInfo(ServiceStructures[i]);
+                        ELSMetadata.ServicesArrayPointer = ServicesDataPointer;
+                        MAPPING_SERVICE_INFO[] ServiceStructures = UtilityMethods.ReadUnmanagedArray<MAPPING_SERVICE_INFO>(ServicesDataPointer, (int)ServicesCount);
+                        ServiceInfo[] Services = new ServiceInfo[ServiceStructures.Length];
+                        for (int i = 0; i < Services.Length; i++)
+                        {
+                            Services[i] = new ServiceInfo(ServiceStructures[i]);
+                        }
+                        return Services;
                     }
-                    return Services;
-                }
-                else
-                {
-                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                    return null;
+                    else
+                    {
+                        Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                        return null;
+                    }
                 }
             }
         }

@@ -4,14 +4,14 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using WindowsAPI.DesktopWindowManagerWrapper.DataClasses;
 using static WindowsAPI.DesktopWindowManagerWrapper.Native.DWMStructures;
-using WindowsAPI.DiagnosticsWrapper.Native;
+using WindowsAPI.ErrorHandlingWrapper.Native;
 using System.ComponentModel;
 using static WindowsAPI.DesktopWindowManagerWrapper.Enumerations;
 using WindowsAPI.WindowsAndMessagesWrapper.Window;
-using WindowsAPI.DiagnosticsWrapper.ProcessesAndThreads;
-using WindowsAPI.WindowsGDIWrapper.DeviceContexts;
+using WindowsAPI.ErrorHandlingWrapper.ProcessesAndThreads;
 using static WindowsAPI.General.Native.GeneralStructures;
 using WindowsAPI.General.Native;
+using WindowsAPI.SafeHandles;
 
 namespace WindowsAPI.DesktopWindowManagerWrapper
 {
@@ -39,19 +39,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             {
                 throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr Result;
-            bool Processed;
-            IntPtr StructurePointer;
             IntPtr wParam;
             switch (Message)
             {
                 case DWMMessages.WM_NCHITTEST:
                     Point CursorCoordinates = (Point)MessageData;
                     IntPtr lParam = Macros.MAKEMESSAGEDATA((ushort)CursorCoordinates.X, (ushort)CursorCoordinates.Y);
-                    Result = Marshal.AllocHGlobal(4);
-                    Processed = DWMFunctions.DwmDefWindowProc(WindowHandle, Message, IntPtr.Zero, lParam, Result);
-                    Marshal.FreeHGlobal(Result);
-                    return Processed;
+                    using (SafeValuePointer Result = new SafeValuePointer(4))
+                    {
+                        return DWMFunctions.DwmDefWindowProc(WindowHandle, Message, IntPtr.Zero, lParam, Result);
+                    }
                 case DWMMessages.WM_NCLBUTTONDBLCLK:
                 case DWMMessages.WM_NCLBUTTONDOWN:
                 case DWMMessages.WM_NCLBUTTONUP:
@@ -65,28 +62,32 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
                 case DWMMessages.WM_NCRBUTTONUP:
                     NonClientMouseMessageData Data = (NonClientMouseMessageData)MessageData;
                     wParam = new IntPtr((int)Data.HitTestResult);
-                    StructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(POINTS)));
-                    Marshal.StructureToPtr(Data.CoordinatesToStructure(), StructurePointer, false);
-                    Result = Marshal.AllocHGlobal(4);
-                    Processed = DWMFunctions.DwmDefWindowProc(WindowHandle, Message, wParam, StructurePointer, Result);
-                    Marshal.FreeHGlobal(Result);
-                    return Processed;
+                    using (SafeStructPointer Pointer = new SafeStructPointer(Marshal.SizeOf(typeof(POINTS))))
+                    {
+                        Pointer.WriteToMemory<POINTS>(Data.CoordinatesToStructure());
+                        using (SafeValuePointer Result = new SafeValuePointer(4))
+                        {
+                            return DWMFunctions.DwmDefWindowProc(WindowHandle, Message, wParam, Pointer, Result);
+                        }
+                    }
                 case DWMMessages.WM_NCMOUSELEAVE:
-                    Result = Marshal.AllocHGlobal(4);
-                    Processed = DWMFunctions.DwmDefWindowProc(WindowHandle, Message, IntPtr.Zero, IntPtr.Zero, Result);
-                    Marshal.FreeHGlobal(Result);
-                    return Processed;
+                    using (SafeValuePointer Result = new SafeValuePointer(4))
+                    {
+                        return DWMFunctions.DwmDefWindowProc(WindowHandle, Message, IntPtr.Zero, IntPtr.Zero, Result);
+                    }
                 case DWMMessages.WM_NCXBUTTONDBLCLK:
                 case DWMMessages.WM_NCXBUTTONDOWN:
                 case DWMMessages.WM_NCXBUTTONUP:
                     NonClientMouseMessageXButtonData Data2 = (NonClientMouseMessageXButtonData)MessageData;
                     wParam = Macros.MAKEMESSAGEDATA((ushort)Data2.HitTestResult, (ushort)Data2.Button);
-                    StructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(POINTS)));
-                    Marshal.StructureToPtr(Data2.CoordinatesToStructure(), StructurePointer, false);
-                    Result = Marshal.AllocHGlobal(4);
-                    Processed = DWMFunctions.DwmDefWindowProc(WindowHandle, Message, wParam, StructurePointer, Result);
-                    Marshal.FreeHGlobal(Result);
-                    return Processed;
+                    using (SafeStructPointer Pointer = new SafeStructPointer(Marshal.SizeOf(typeof(POINTS))))
+                    {
+                        Pointer.WriteToMemory<POINTS>(Data2.CoordinatesToStructure());
+                        using (SafeValuePointer Result = new SafeValuePointer(4))
+                        {
+                            return DWMFunctions.DwmDefWindowProc(WindowHandle, Message, wParam, Pointer, Result);
+                        }
+                    }
                 default: 
                     return false;
             }
@@ -131,7 +132,7 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             MARGINS MarginStructure = ExtensionMargins.ToStructure();
             uint Result = DWMFunctions.ExtendFrameIntoClientArea(WindowHandle, ref MarginStructure);
@@ -229,20 +230,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NCRENDERING_ENABLED, ValuePointer, 4);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                bool RenderingStatus = Convert.ToBoolean(Marshal.ReadInt32(ValuePointer));
-                Marshal.FreeHGlobal(ValuePointer);
-                return RenderingStatus;
-            }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return false;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NCRENDERING_ENABLED, Pointer, 4);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    return Pointer.ReadFromMemory<bool>();
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return false;
+                }
             }
         }
 
@@ -261,23 +262,22 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             int StructureSize = Marshal.SizeOf(typeof(RECT));
-            IntPtr ValuePointer = Marshal.AllocHGlobal(StructureSize);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CAPTION_BUTTON_BOUNDS, ValuePointer, (uint)StructureSize);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeStructPointer Pointer = new SafeStructPointer(StructureSize))
             {
-                RECT Structure = new RECT();
-                Marshal.PtrToStructure(ValuePointer, Structure);
-                Marshal.FreeHGlobal(ValuePointer);
-                Rectangle Rectangle = Rectangle.FromLTRB(Structure.Left, Structure.Top, Structure.Right, Structure.Bottom);
-                return Rectangle;
-            }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return Rectangle.Empty;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CAPTION_BUTTON_BOUNDS, Pointer, (uint)StructureSize);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    RECT Structure = Pointer.ReadFromMemory<RECT>();
+                    return Rectangle.FromLTRB(Structure.Left, Structure.Top, Structure.Right, Structure.Bottom);
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return Rectangle.Empty;
+                }
             }
         }
 
@@ -296,23 +296,22 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             int StructureSize = Marshal.SizeOf(typeof(RECT));
-            IntPtr ValuePointer = Marshal.AllocHGlobal(StructureSize);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS, ValuePointer, (uint)StructureSize);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeStructPointer Pointer = new SafeStructPointer(StructureSize))
             {
-                RECT Structure = new RECT();
-                Marshal.PtrToStructure(ValuePointer, Structure);
-                Marshal.FreeHGlobal(ValuePointer);
-                Rectangle Rectangle = Rectangle.FromLTRB(Structure.Left, Structure.Top, Structure.Right, Structure.Bottom);
-                return Rectangle;
-            }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return Rectangle.Empty;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS, Pointer, (uint)StructureSize);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    RECT Structure = Pointer.ReadFromMemory<RECT>();
+                    return Rectangle.FromLTRB(Structure.Left, Structure.Top, Structure.Right, Structure.Bottom);
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return Rectangle.Empty;
+                }
             }
         }
 
@@ -331,20 +330,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAKED, ValuePointer, 4);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                CloakReason CloakReason = (CloakReason)Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return CloakReason;
-            }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return CloakReason.Inherited;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAKED, Pointer, 4);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    return Pointer.ReadFromMemory<CloakReason>();
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return CloakReason.Inherited;
+                }
             }
         }
 
@@ -363,20 +362,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_VISIBLE_FRAME_BORDER_THICKNESS, ValuePointer, 4);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                int Width = Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return Width;
-            }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return -1;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_VISIBLE_FRAME_BORDER_THICKNESS, Pointer, 4);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    return Pointer.ReadFromMemory<int>();
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return -1;
+                }
             }
         }
 
@@ -395,21 +394,22 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, ValuePointer, 4);
-            if (Result is HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                SystemBackdropType BackdropType = (SystemBackdropType)Marshal.ReadInt32(ValuePointer);
-                Marshal.FreeHGlobal(ValuePointer);
-                return BackdropType;
+                uint Result = DWMFunctions.GetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, Pointer, 4);
+                if (Result is HRESULTErrorConstants.S_OK)
+                {
+                    return Pointer.ReadFromMemory<SystemBackdropType>();
+                }
+                else
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    return SystemBackdropType.LetDWMDecide;
+                }
             }
-            else
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return SystemBackdropType.LetDWMDecide;
-            }
+            
         }
         #endregion
         #region Window Attributes Setters
@@ -429,19 +429,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             if ((int)Policy > 2 || (int)Policy < 0)
             {
                 throw new InvalidEnumArgumentException("Invalid policy value.");
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, (int)Policy);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NCRENDERING_POLICY, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Policy);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NCRENDERING_POLICY, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -459,15 +460,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TRANSITIONS_FORCEDISABLED, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TRANSITIONS_FORCEDISABLED, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -485,15 +487,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TRANSITIONS_FORCEDISABLED, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TRANSITIONS_FORCEDISABLED, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -511,15 +514,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_ALLOW_NCPAINT, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_ALLOW_NCPAINT, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -537,15 +541,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_ALLOW_NCPAINT, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_ALLOW_NCPAINT, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -563,15 +568,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NONCLIENT_RTL_LAYOUT, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NONCLIENT_RTL_LAYOUT, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -589,15 +595,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NONCLIENT_RTL_LAYOUT, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_NONCLIENT_RTL_LAYOUT, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -615,15 +622,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FORCE_ICONIC_REPRESENTATION, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FORCE_ICONIC_REPRESENTATION, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -641,15 +649,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FORCE_ICONIC_REPRESENTATION, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FORCE_ICONIC_REPRESENTATION, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -669,19 +678,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             if ((int)Policy > 2 || (int)Policy < 0)
             {
                 throw new InvalidEnumArgumentException("Invalid policy value.");
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, (int)Policy);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FLIP3D_POLICY, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Policy);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FLIP3D_POLICY, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -701,20 +711,21 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             DWMEnumerations.DWMWINDOWATTRIBUTE Attribute = DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_HAS_ICONIC_BITMAP;
             if (ForceIconicRepresentation)
             {
                 Attribute |= DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FORCE_ICONIC_REPRESENTATION;
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(HasIconicBitmap));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, Attribute, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(HasIconicBitmap);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, Attribute, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -732,15 +743,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_DISALLOW_PEEK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_DISALLOW_PEEK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -758,15 +770,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_DISALLOW_PEEK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_DISALLOW_PEEK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -784,15 +797,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXCLUDED_FROM_PEEK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXCLUDED_FROM_PEEK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -810,15 +824,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXCLUDED_FROM_PEEK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_EXCLUDED_FROM_PEEK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -836,15 +851,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -862,15 +878,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAK, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CLOAK, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -888,19 +905,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FREEZE_REPRESENTATION, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                if (Result is HRESULTErrorConstants.E_INVALIDARG)
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FREEZE_REPRESENTATION, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
                 {
-                    throw new ArgumentException("The window must be a UWP window.", nameof(WindowHandle));
+                    if (Result is HRESULTErrorConstants.E_INVALIDARG)
+                    {
+                        throw new ArgumentException("The window must be a UWP window.", nameof(WindowHandle));
+                    }
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
                 }
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
             }
         }
 
@@ -918,19 +936,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FREEZE_REPRESENTATION, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                if (Result is HRESULTErrorConstants.E_INVALIDARG)
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_FREEZE_REPRESENTATION, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
                 {
-                    throw new ArgumentException("The window must be a UWP window.", nameof(WindowHandle));
+                    if (Result is HRESULTErrorConstants.E_INVALIDARG)
+                    {
+                        throw new ArgumentException("The window must be a UWP window.", nameof(WindowHandle));
+                    }
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
                 }
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
             }
         }
 
@@ -948,15 +967,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_PASSIVE_UPDATE_MODE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_PASSIVE_UPDATE_MODE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -974,15 +994,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_PASSIVE_UPDATE_MODE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_PASSIVE_UPDATE_MODE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1000,15 +1021,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_HOSTBACKDROPBRUSH, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_HOSTBACKDROPBRUSH, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1026,15 +1048,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_HOSTBACKDROPBRUSH, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_HOSTBACKDROPBRUSH, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1052,15 +1075,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(true));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(true));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1078,15 +1102,16 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, Convert.ToInt32(false));
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Convert.ToInt32(false));
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1106,19 +1131,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             if ((int)Setting > 3 || (int)Setting < 0)
             {
                 throw new InvalidEnumArgumentException("Invalid setting value.");
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, (int)Setting);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(Setting);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1137,16 +1163,17 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            int Win32ColorValue = ColorTranslator.ToWin32(Color);
-            Marshal.WriteInt32(ValuePointer, Win32ColorValue);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_BORDER_COLOR, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                int Win32ColorValue = ColorTranslator.ToWin32(Color);
+                Pointer.WriteToMemory(Win32ColorValue);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_BORDER_COLOR, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1165,16 +1192,17 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            int Win32ColorValue = ColorTranslator.ToWin32(Color);
-            Marshal.WriteInt32(ValuePointer, Win32ColorValue);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CAPTION_COLOR, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                int Win32ColorValue = ColorTranslator.ToWin32(Color);
+                Pointer.WriteToMemory(Win32ColorValue);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_CAPTION_COLOR, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1193,16 +1221,17 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            int Win32ColorValue = ColorTranslator.ToWin32(Color);
-            Marshal.WriteInt32(ValuePointer, Win32ColorValue);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TEXT_COLOR, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                int Win32ColorValue = ColorTranslator.ToWin32(Color);
+                Pointer.WriteToMemory(Win32ColorValue);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_TEXT_COLOR, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1222,19 +1251,20 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             if ((int)BackdropType > 4 || (int)BackdropType < 0)
             {
                 throw new InvalidEnumArgumentException("Invalid setting value.");
             }
-            IntPtr ValuePointer = Marshal.AllocHGlobal(4);
-            Marshal.WriteInt32(ValuePointer, (int)BackdropType);
-            uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, ValuePointer, 4);
-            Marshal.FreeHGlobal(ValuePointer);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeValuePointer Pointer = new SafeValuePointer(4))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                Pointer.WriteToMemory(BackdropType);
+                uint Result = DWMFunctions.SetWindowAttribute(WindowHandle, DWMEnumerations.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, Pointer, 4);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
         #endregion
@@ -1252,7 +1282,7 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             }
             if (!Windows.IsValidWindow(WindowHandle))
             {
-                throw new ArgumentException(nameof(WindowHandle), "The handle does not reference a valid window.");
+                throw new ArgumentException("The handle does not reference a valid window.", nameof(WindowHandle));
             }
             uint Result = DWMFunctions.InvalidateIconicBitmaps(WindowHandle);
             if (Result != HRESULTErrorConstants.S_OK)
@@ -1283,8 +1313,8 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             {
                 Size ThumbnailSize = new Size()
                 {
-                    Width = Size.Width,
-                    Height = Size.Height
+                    Width = Size.X,
+                    Height = Size.Y
                 };
                 return ThumbnailSize;
             }
@@ -1301,7 +1331,7 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="Win32Exception"></exception>
-        public static IntPtr RegisterThumbnail(IntPtr DestinationWindow, IntPtr SourceWindow, DWMThumbnailProperties ThumbnailProperties = null)
+        public static SafeDwmThumbnailHandle RegisterThumbnail(IntPtr DestinationWindow, IntPtr SourceWindow, DWMThumbnailProperties ThumbnailProperties = null)
         {
             if (DestinationWindow == IntPtr.Zero || SourceWindow == IntPtr.Zero)
             {
@@ -1338,7 +1368,7 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             if (Result != HRESULTErrorConstants.S_OK)
             {
                 Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
-                return IntPtr.Zero;
+                return null;
             }
             else
             {
@@ -1357,7 +1387,7 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
         /// <param name="Properties">Proprietà della miniatura.</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public static void UpdateThumbnailProperties(IntPtr ThumbnailHandle, DWMThumbnailProperties Properties)
+        public static void UpdateThumbnailProperties(SafeDwmThumbnailHandle ThumbnailHandle, DWMThumbnailProperties Properties)
         {
             if (ThumbnailHandle == IntPtr.Zero)
             {
@@ -1402,27 +1432,28 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             {
                 throw new ArgumentException("The window must belong to the calling process.", nameof(WindowHandle));
             }
-            IntPtr BitmapHandle = Bitmap.GetHbitmap();
-            IntPtr StructurePointer = IntPtr.Zero;
-            if (ClientRegionOffset.HasValue)
+            using (SafeBitmapHandle BitmapHandle = new SafeBitmapHandle(Bitmap.GetHbitmap(), true))
             {
-                POINT Offset = new POINT()
+                SafeStructPointer StructurePointer = null;
+                if (ClientRegionOffset.HasValue)
                 {
-                    x = ClientRegionOffset.Value.X,
-                    y = ClientRegionOffset.Value.Y,
-                };
-                StructurePointer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(POINT)));
-                Marshal.StructureToPtr(Offset, StructurePointer, false);
-            }
-            uint Result = DWMFunctions.SetIconicLivePreviewBitmap(WindowHandle, BitmapHandle, StructurePointer, DisplayFrameAroundBitmap ? DWMConstants.DWM_SIT_DISPLAYFRAME : 0);
-            if (StructurePointer != IntPtr.Zero)
-            {
-                Marshal.FreeHGlobal(StructurePointer);
-            }
-            _ = DeviceContexts.DeleteObject(BitmapHandle);
-            if (Result != HRESULTErrorConstants.S_OK)
-            {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                    POINT Offset = new POINT()
+                    {
+                        x = ClientRegionOffset.Value.X,
+                        y = ClientRegionOffset.Value.Y,
+                    };
+                    StructurePointer = new SafeStructPointer(Marshal.SizeOf(typeof(POINT)));
+                    StructurePointer.WriteToMemory<POINT>(Offset);
+                }
+                uint Result = DWMFunctions.SetIconicLivePreviewBitmap(WindowHandle, BitmapHandle, StructurePointer, DisplayFrameAroundBitmap ? DWMConstants.DWM_SIT_DISPLAYFRAME : 0);
+                if (!StructurePointer.IsInvalid)
+                {
+                    StructurePointer.Dispose();
+                }
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1448,12 +1479,13 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
             {
                 throw new ArgumentException("The window must belong to the calling process.", nameof(WindowHandle));
             }
-            IntPtr BitmapHandle = Bitmap.GetHbitmap();
-            uint Result = DWMFunctions.SetIconicThumbnail(WindowHandle, BitmapHandle, DisplayFrameAroundBitmap ? DWMConstants.DWM_SIT_DISPLAYFRAME : 0);
-            _ = DeviceContexts.DeleteObject(BitmapHandle);
-            if (Result != HRESULTErrorConstants.S_OK)
+            using (SafeBitmapHandle BitmapHandle = new SafeBitmapHandle(Bitmap.GetHbitmap(), true))
             {
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                uint Result = DWMFunctions.SetIconicThumbnail(WindowHandle, BitmapHandle, DisplayFrameAroundBitmap ? DWMConstants.DWM_SIT_DISPLAYFRAME : 0);
+                if (Result != HRESULTErrorConstants.S_OK)
+                {
+                    Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
+                }
             }
         }
 
@@ -1491,29 +1523,6 @@ namespace WindowsAPI.DesktopWindowManagerWrapper
                 {
                     Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
                 }
-            }
-        }
-
-        /// <summary>
-        /// Annulla la relazione tra due finestre.
-        /// </summary>
-        /// <param name="ThumbnailHandle">Handle alla miniatura.</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ArgumentException"></exception>
-        public static void UnregisterThumbnailRelationshiop(IntPtr ThumbnailHandle)
-        {
-            if (ThumbnailHandle == IntPtr.Zero)
-            {
-                throw new ArgumentNullException(nameof(ThumbnailHandle), "No handle provided.");
-            }
-            uint Result = DWMFunctions.UnregisterThumbnailRelationship(ThumbnailHandle);
-            if (Result != HRESULTErrorConstants.S_OK)
-            {
-                if (Result == HRESULTErrorConstants.E_INVALIDARG)
-                {
-                    throw new ArgumentException("The handle references a thumbnail that is not owned by the current process or an invalid one.");
-                }
-                Marshal.ThrowExceptionForHR((int)Result, new IntPtr(-1));
             }
         }
     }

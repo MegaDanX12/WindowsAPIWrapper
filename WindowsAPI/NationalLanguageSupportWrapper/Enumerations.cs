@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using WindowsAPI.NationalLanguageSupportWrapper.Native;
@@ -823,6 +824,201 @@ namespace WindowsAPI.NationalLanguageSupportWrapper
             /// </summary>
             /// <remarks>Trasforma ogni carattere precomposto nel suo decomposto canonico equivalente e tutti i caratteri di compatibilità nei loro equivalenti.</remarks>
             KD = NORM_FORM.NormalizationKD
+        }
+
+        /// <summary>
+        /// Opzioni di mappatura.
+        /// </summary>
+        [Flags]
+        public enum MappingOptions
+        {
+            /// <summary>
+            /// Nessuna opzione.
+            /// </summary>
+            None = 0,
+            /// <summary>
+            /// Inverti i byte.
+            /// </summary>
+            UseByteReversal = NLSEnumerations.MappingOptions.LCMAP_BYTEREV,
+            /// <summary>
+            /// Usa caratteri fullwidth dove applicabile.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato insieme a <see cref="UseNarrowChars"/>.</remarks>
+            UseWideChars = NLSEnumerations.MappingOptions.LCMAP_FULLWIDTH,
+            /// <summary>
+            /// Usa caratteri halfiwidth dove applicabile.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato insieme a <see cref="UseWideChars"/>.</remarks>
+            UseNarrowChars = NLSEnumerations.MappingOptions.LCMAP_HALFWIDTH,
+            /// <summary>
+            /// Mappa tutti i caratteri katakana a caratteri hiragana.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato insieme a <see cref="MapHiraganaToKatakana"/>.</remarks>
+            MapKatakanaToHiragana = NLSEnumerations.MappingOptions.LCMAP_HIRAGANA,
+            /// <summary>
+            /// Mappa tutti i caratteri hiragana a caratteri katakana.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato insieme a <see cref="MapKatakanaToHiragana"/>.</remarks>
+            MapHiraganaToKatakana = NLSEnumerations.MappingOptions.LCMAP_KATAKANA,
+            /// <summary>
+            /// Usa regole linguistiche per le maiuscole al posto di quelle del file system.
+            /// </summary>
+            /// <remarks>Questo valore può essere usato solamente insieme a <see cref="MapToUppercase"/> oppure <see cref="MapToLowercase"/>.</remarks>
+            UseLinguisticCasing = NLSEnumerations.MappingOptions.LCMAP_LINGUISTIC_CASING,
+            /// <summary>
+            /// Mappa tutti i caratteri minuscoli a caratteri maiuscoli.
+            /// </summary>
+            MapToLowercase = NLSEnumerations.MappingOptions.LCMAP_LOWERCASE,
+            /// <summary>
+            /// Restituisce un hash dei pesi grezzi di una stringa.
+            /// </summary>
+            /// <remarks>Il buffer deve avere una dimensione di 32 bit.</remarks>
+            GenerateHash = NLSEnumerations.MappingOptions.LCMAP_HASH,
+            /// <summary>
+            /// Mappa caratteri cinesi tradizionali a caratteri cinesi semplificati.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato con <see cref="MapSimplifiedChineseToTraditionalChinese"/>.</remarks>
+            MapTraditionalChineseToSimplifiedChinese = NLSEnumerations.MappingOptions.LCMAP_SIMPLIFIED_CHINESE,
+            /// <summary>
+            /// Produce una chiave di ordinamento normalizzata.
+            /// </summary>
+            /// <remarks>Se questo valore non è specificato, viene eseguito la mappatura della stringa.</remarks>
+            GenerateSortKey = NLSEnumerations.MappingOptions.LCMAP_SORTKEY,
+            /// <summary>
+            /// Mappa tutte le prime lettere di ogni parola al loro equivalente maiuscolo.
+            /// </summary>
+            MapToTitleCase = NLSEnumerations.MappingOptions.LCMAP_TITLECASE,
+            /// <summary>
+            /// Mappa caratteri cinesi semplificati a caratteri cinesi tradizionali.
+            /// </summary>
+            /// <remarks>Questo valore non può essere usato con <see cref="MapTraditionalChineseToSimplifiedChinese"/>.</remarks>
+            MapSimplifiedChineseToTraditionalChinese = NLSEnumerations.MappingOptions.LCMAP_TRADITIONAL_CHINESE,
+            /// <summary>
+            /// Mappa tutti i caratteri maiuscoli a caratteri minuscoli.
+            /// </summary>
+            MapToUppercase = NLSEnumerations.MappingOptions.LCMAP_UPPERCASE
+        }
+
+        /// <summary>
+        /// Sostituzione cifre.
+        /// </summary>
+        public enum DigitSubstitution
+        {
+            /// <summary>
+            /// Basata sul contesto.
+            /// </summary>
+            ContextBased,
+            /// <summary>
+            /// Nessuna sostituzione.
+            /// </summary>
+            None,
+            /// <summary>
+            /// Sostituzione nativa delle cifre.
+            /// </summary>
+            NativeDigit
+        }
+
+        /// <summary>
+        /// Primo giorno della settimana.
+        /// </summary>
+        public enum FirstDayOfWeek
+        {
+            /// <summary>
+            /// Lunedì
+            /// </summary>
+            Monday = NLSEnumerations.FirstDayOfWeek.Monday,
+            /// <summary>
+            /// Martedì.
+            /// </summary>
+            Tuesday = NLSEnumerations.FirstDayOfWeek.Tuesday,
+            /// <summary>
+            /// Mercoledì.
+            /// </summary>
+            Wednesday = NLSEnumerations.FirstDayOfWeek.Wednesday,
+            /// <summary>
+            /// Giovedì.
+            /// </summary>
+            Thursday = NLSEnumerations.FirstDayOfWeek.Thursday,
+            /// <summary>
+            /// Venerdi.
+            /// </summary>
+            Friday = NLSEnumerations.FirstDayOfWeek.Friday,
+            /// <summary>
+            /// Sabato.
+            /// </summary>
+            Saturday = NLSEnumerations.FirstDayOfWeek.Saturday,
+            /// <summary>
+            /// Domenica.
+            /// </summary>
+            Sunday = NLSEnumerations.FirstDayOfWeek.Sunday
+        }
+
+        /// <summary>
+        /// Prima settimana dell'anno.
+        /// </summary>
+        public enum FirstWeekOfYear
+        {
+            /// <summary>
+            /// Settimana contenente il primo gennaio.
+            /// </summary>
+            WeekContainingFirstJanuary = NLSEnumerations.FirstWeekOfYear.FirstJanuaryWeek,
+            /// <summary>
+            /// Prima settimana completa dopo il primo gennaio.
+            /// </summary>
+            FirstFullWeekAfterFirstJanuary = NLSEnumerations.FirstWeekOfYear.FirstFullWeekAfterFirstJanuary,
+            /// <summary>
+            /// Prima settimana con almeno 4 giorni.
+            /// </summary>
+            FirstWeekWithFourDays = NLSEnumerations.FirstWeekOfYear.FirstWeekWith4Days
+        }
+
+        /// <summary>
+        /// Sistema di misura.
+        /// </summary>
+        public enum MeasurementSystem
+        {
+            /// <summary>
+            /// Sistema metrico decimale.
+            /// </summary>
+            Metric,
+            /// <summary>
+            /// Sistema usato dagli Stati Uniti.
+            /// </summary>
+            Imperial
+        }
+
+        /// <summary>
+        /// Dimensione della carta.
+        /// </summary>
+        public enum PaperSize
+        {
+            USLetter = 1,
+            USLegal = 5,
+            A3 = 8,
+            A4
+        }
+
+        /// <summary>
+        /// Layout di lettura.
+        /// </summary>
+        public enum ReadingLayout
+        {
+            /// <summary>
+            /// Da sinistra a destra.
+            /// </summary>
+            LeftToRight = NLSEnumerations.ReadingLayout.LeftToRight,
+            /// <summary>
+            /// Da destra a sinistra.
+            /// </summary>
+            RightToLeft = NLSEnumerations.ReadingLayout.RightToLeft,
+            /// <summary>
+            /// Verticalmente dall'alto verso il basso con colonne da destra a sinistra oppure letto in righe orizzontali da sinistra a destra.
+            /// </summary>
+            VerticallyTopBottomRTLHorizontal = NLSEnumerations.ReadingLayout.VerticallyTopBottomRTLHorizontal,
+            /// <summary>
+            /// Verticalmente dall'alto verso il basso con colonne da sinistra a destra.
+            /// </summary>
+            VerticallyTopBottomLTRHorizontal = NLSEnumerations.ReadingLayout.VerticallyTopBottomLTRHorizontal,
         }
     }
 }

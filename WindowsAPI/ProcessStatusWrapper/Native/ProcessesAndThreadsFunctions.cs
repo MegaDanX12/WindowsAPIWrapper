@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WindowsAPI.DiagnosticsWrapper.Native.ProcessesAndThreads
+namespace WindowsAPI.ErrorHandlingWrapper.Native
 {
     /// <summary>
     /// Funzioni relative ai processi e ai thread.

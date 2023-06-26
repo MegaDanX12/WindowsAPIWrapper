@@ -11,7 +11,7 @@ using static WindowsAPI.HighDPIWrapper.Enumerations;
 using static WindowsAPI.HighDPIWrapper.Native.HighDPIEnumerations;
 using static WindowsAPI.WindowsAndMessagesWrapper.Window.Enumerations;
 using static WindowsAPI.WindowsAndMessagesWrapper.Window.Windows;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 using WindowsAPI.WindowsAndMessagesWrapper.Native.Configuration;
 using WindowsAPI.WindowsGDIWrapper.FontAndText.DataClasses;
 using static WindowsAPI.WindowsGDIWrapper.Native.FontAndText.FontAndTextStructures;
@@ -19,8 +19,10 @@ using WindowsAPI.UserInterfaceElementsWrapper.Icons.DataClasses;
 using static WindowsAPI.UserInterfaceElementsWrapper.Native.Icons.IconStructures;
 using WindowsAPI.WindowsAndMessagesWrapper.Configuration.DataClasses;
 using static WindowsAPI.WindowsAndMessagesWrapper.Native.Configuration.ConfigurationStructures;
-using WindowsAPI.DiagnosticsWrapper.Native;
+using WindowsAPI.ErrorHandlingWrapper.Native;
 using WindowsAPI.HighDPIWrapper.DataClasses;
+using Microsoft.Win32.SafeHandles;
+using WindowsAPI.SafeHandles;
 
 namespace WindowsAPI.HighDPIWrapper
 {
@@ -58,14 +60,9 @@ namespace WindowsAPI.HighDPIWrapper
                 Bottom = DesiredClientArea.Bottom
             };
             bool Result = HighDPIFunctions.AdjustWindowRectForDpi(ref ClientArea, (WindowEnumerations.WindowStyles)Styles, HasMenu, (WindowEnumerations.WindowExtendedStyles)ExtendedStyles, (uint)DPI);
-            if (Result)
-            {
-                return Rectangle.FromLTRB(ClientArea.Left, ClientArea.Top, ClientArea.Right, ClientArea.Bottom);
-            }
-            else
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
+            return Result
+                ? Rectangle.FromLTRB(ClientArea.Left, ClientArea.Top, ClientArea.Right, ClientArea.Bottom)
+                : throw new Win32Exception(Marshal.GetLastWin32Error());
         }
 
         /// <summary>
@@ -187,9 +184,9 @@ namespace WindowsAPI.HighDPIWrapper
         /// <returns>Un valore <see cref="DPIAwareness"/> che indica come il processo tiene conto dei DPI.</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="UnauthorizedAccessException"></exception>
-        public static DPIAwareness GetProcessDpiAwareness(IntPtr ProcessHandle)
+        public static DPIAwareness GetProcessDpiAwareness(SafeProcessHandle ProcessHandle)
         {
-            uint Result = HighDPIFunctions.GetProcessDpiAwareness(ProcessHandle, out PROCESS_DPI_AWARENESS Value);
+            uint Result = HighDPIFunctions.GetProcessDpiAwareness(ProcessHandle.DangerousGetHandle(), out PROCESS_DPI_AWARENESS Value);
             if (Result == S_OK)
             {
                 return (DPIAwareness)Value;
@@ -512,18 +509,18 @@ namespace WindowsAPI.HighDPIWrapper
         {
             LOGFONT Structure = new LOGFONT();
             int StructureSize = Marshal.SizeOf(Structure);
-            IntPtr StructurePointer = Marshal.AllocHGlobal(StructureSize);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETICONTITLEFONT, (uint)StructureSize, StructurePointer, 0, (uint)DPI))
+            using (SafeStructPointer StructurePointer = new SafeStructPointer(StructureSize))
             {
-                Structure = (LOGFONT)Marshal.PtrToStructure(StructurePointer, typeof(LOGFONT));
-                Marshal.FreeHGlobal(StructurePointer);
-                return new FontAttributes(Structure);
-            }
-            else
-            {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                StructurePointer.WriteToMemory<LOGFONT>(Structure);
+                if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETICONTITLEFONT, (uint)StructureSize, StructurePointer, 0, (uint)DPI))
+                {
+                    Structure = StructurePointer.ReadFromMemory<LOGFONT>();
+                    return new FontAttributes(Structure);
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -539,18 +536,18 @@ namespace WindowsAPI.HighDPIWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(ICONMETRICS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETICONMETRICS, Structure.Size, StructurePointer, 0, (uint)DPI))
+            using (SafeStructPointer StructurePointer = new SafeStructPointer((int)Structure.Size))
             {
-                Structure = (ICONMETRICS)Marshal.PtrToStructure(StructurePointer,typeof(ICONMETRICS));
-                Marshal.FreeHGlobal(StructurePointer);
-                return new IconMetrics(Structure);
-            }
-            else
-            {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                StructurePointer.WriteToMemory<ICONMETRICS>(Structure);
+                if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETICONMETRICS, Structure.Size, StructurePointer, 0, (uint)DPI))
+                {
+                    Structure = StructurePointer.ReadFromMemory<ICONMETRICS>();
+                    return new IconMetrics(Structure);
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -566,18 +563,18 @@ namespace WindowsAPI.HighDPIWrapper
             {
                 Size = (uint)Marshal.SizeOf(typeof(NONCLIENTMETRICS))
             };
-            IntPtr StructurePointer = Marshal.AllocHGlobal((int)Structure.Size);
-            Marshal.StructureToPtr(Structure, StructurePointer, false);
-            if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETNONCLIENTMETRICS, Structure.Size, StructurePointer, 0, (uint)DPI))
+            using (SafeStructPointer StructurePointer = new SafeStructPointer((int)Structure.Size))
             {
-                Structure = (NONCLIENTMETRICS)Marshal.PtrToStructure(StructurePointer, typeof(NONCLIENTMETRICS));
-                Marshal.FreeHGlobal(StructurePointer);
-                return new NonClientMetrics(Structure);
-            }
-            else
-            {
-                Marshal.FreeHGlobal(StructurePointer);
-                throw new Win32Exception(Marshal.GetLastWin32Error());
+                StructurePointer.WriteToMemory<NONCLIENTMETRICS>(Structure);
+                if (HighDPIFunctions.SystemParametersInfoForDpi((uint)SystemParametersDPI.SPI_GETNONCLIENTMETRICS, Structure.Size, StructurePointer, 0, (uint)DPI))
+                {
+                    Structure = StructurePointer.ReadFromMemory<NONCLIENTMETRICS>();
+                    return new NonClientMetrics(Structure);
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
             }
         }
 
@@ -859,13 +856,13 @@ namespace WindowsAPI.HighDPIWrapper
         /// <param name="ProcessHandle">Handle al processo.</param>
         /// <returns>Il valore DPI.</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static int GetSystemDpiForProcess(IntPtr ProcessHandle)
+        public static int GetSystemDpiForProcess(SafeProcessHandle ProcessHandle)
         {
-            if (ProcessHandle == IntPtr.Zero)
+            if (ProcessHandle is null || ProcessHandle.IsInvalid)
             {
                 throw new ArgumentNullException(nameof(ProcessHandle), "No handle provided.");
             }
-            return (int)HighDPIFunctions.GetSystemDpiForProcess(ProcessHandle);
+            return (int)HighDPIFunctions.GetSystemDpiForProcess(ProcessHandle.DangerousGetHandle());
         }
 
         /// <summary>

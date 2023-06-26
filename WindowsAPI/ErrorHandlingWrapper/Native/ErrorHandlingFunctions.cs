@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WindowsAPI.DiagnosticsWrapper.Native.ErrorHandling
+namespace WindowsAPI.ErrorHandlingWrapper.Native
 {
     /// <summary>
     /// Funzioni per la gestione degli errori.

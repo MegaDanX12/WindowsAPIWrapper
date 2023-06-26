@@ -47,11 +47,11 @@ namespace WindowsAPI.General.Native
             /// <summary>
             /// Larghezza del rettangolo.
             /// </summary>
-            public int Width;
+            public int X;
             /// <summary>
             /// Altezza del rettangolo.
             /// </summary>
-            public int Height;
+            public int Y;
         }
 
         /// <summary>

@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using static WindowsAPI.HighDPIWrapper.Native.HighDPIEnumerations;
 using static WindowsAPI.WindowsAndMessagesWrapper.Native.Window.WindowEnumerations;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 using static WindowsAPI.WindowsAndMessagesWrapper.Native.Configuration.ConfigurationEnumerations;
 using static WindowsAPI.General.Native.GeneralStructures;
 

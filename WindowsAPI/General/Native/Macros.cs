@@ -12,10 +12,10 @@ namespace WindowsAPI.General.Native
     internal static class Macros
     {
         /// <summary>
-        /// Recupera gli ultimi 16 bit dal un valore a 32 bit fornito.
+        /// Recupera i primi 16 bit da un valore a 32 bit fornito.
         /// </summary>
         /// <param name="Value">Valore a 32 bit.</param>
-        /// <returns>Il valore degli ultimi 16 bit.</returns>
+        /// <returns>Il valore dei primi 16 bit.</returns>
         internal static ushort LOWORD(uint Value)
         {
             if (IntPtr.Size == 4)
@@ -29,10 +29,10 @@ namespace WindowsAPI.General.Native
         }
 
         /// <summary>
-        /// Recupera i primi 16 bit dal un valore a 32 bit fornito.
+        /// Recupera gli ultimi 16 bit da un valore a 32 bit fornito.
         /// </summary>
         /// <param name="Value">Valore a 32 bit.</param>
-        /// <returns>Il valore dei primi 16 bit.</returns>
+        /// <returns>Il valore degli ultimi 16 bit.</returns>
         internal static ushort HIWORD(uint Value)
         {
             if (IntPtr.Size == 4)

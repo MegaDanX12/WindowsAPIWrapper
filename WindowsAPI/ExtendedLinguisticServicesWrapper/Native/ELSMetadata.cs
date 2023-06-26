@@ -4,7 +4,7 @@ using WindowsAPI.ExtendedLinguisticServicesWrapper.DataClasses;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Callbacks;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSCallbacks;
 using static WindowsAPI.ExtendedLinguisticServicesWrapper.Native.ELSStructures;
-using static WindowsAPI.DiagnosticsWrapper.Native.HRESULTErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.HRESULTErrorConstants;
 
 namespace WindowsAPI.ExtendedLinguisticServicesWrapper.Native
 {

@@ -6,7 +6,7 @@ using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIEnumerations;
 using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIStructures;
 using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIConstants;
 using static WindowsAPI.NationalLanguageSupportWrapper.Native.NLSConstants;
-using static WindowsAPI.DiagnosticsWrapper.Native.Win32ErrorConstants;
+using static WindowsAPI.ErrorHandlingWrapper.Native.Win32ErrorConstants;
 
 namespace WindowsAPI.MultilingualUserInterfaceWrapper.Native
 {

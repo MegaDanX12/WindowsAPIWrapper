@@ -306,5 +306,84 @@ namespace WindowsAPI.WindowsAndMessagesWrapper.Native.Window
             /// </summary>
             WS_EX_WINDOWEDGE = 256
         }
+
+        /// <summary>
+        /// Colori predefiniti di sistema.
+        /// </summary>
+        internal enum SystemColors
+        {
+
+            COLOR_SCROLLBAR,
+
+            COLOR_BACKGROUND,
+
+            COLOR_ACTIVECAPTION,
+
+            COLOR_INACTIVECAPTION,
+
+            COLOR_MENU,
+
+            COLOR_WINDOW,
+
+            COLOR_WINDOWFRAME,
+
+            COLOR_MENUTEXT,
+
+            COLOR_WINDOWTEXT,
+
+            COLOR_CAPTIONTEXT,
+
+            COLOR_ACTIVEBORDER,
+
+            COLOR_INACTIVEBORDER,
+
+            COLOR_APPWORKSPACE,
+
+            COLOR_HIGHLIGHT,
+
+            COLOR_HIGHLIGHTTEXT,
+
+            COLOR_BTNFACE,
+
+            COLOR_BTNSHADOW,
+
+            COLOR_GRAYTEXT,
+
+            COLOR_BTNTEXT,
+
+            COLOR_INACTIVECAPTIONTEXT,
+
+            COLOR_BTNHIGHLIGHT,
+
+            COLOR_3DDKSHADOW,
+
+            COLOR_3DLIGHT,
+
+            COLOR_INFOTEXT,
+
+            COLOR_INFOBK,
+
+            COLOR_HOTLIGHT = 26,
+
+            COLOR_GRADIENTACTIVECAPTION,
+
+            COLOR_GRADIENTINACTIVECAPTION,
+
+            COLOR_MENUHILIGHT,
+
+            COLOR_MENUBAR,
+
+            COLOR_DESKTOP = COLOR_BACKGROUND,
+
+            COLOR_3DFACE = COLOR_BTNFACE,
+
+            COLOR_3DSHADOW = COLOR_BTNSHADOW,
+
+            COLOR_3DHIGHLIGHT = COLOR_BTNHIGHLIGHT,
+
+            COLOR_3DHILIGHT = COLOR_BTNHIGHLIGHT,
+
+            COLOR_BTNHILIGHT = COLOR_BTNHIGHLIGHT
+        }
     }
 }

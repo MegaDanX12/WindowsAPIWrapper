@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using WindowsAPI.MultilingualUserInterfaceWrapper.Native;
+using WindowsAPI.SafeHandles;
 using static WindowsAPI.MultilingualUserInterfaceWrapper.Enumerations;
 using static WindowsAPI.MultilingualUserInterfaceWrapper.Native.MUIEnumerations;
 
@@ -43,7 +44,8 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper.DataClasses
         /// </summary>
         /// <param name="Language">Lingua.</param>
         /// <param name="Attributes">Attributi della lingua.</param>
-        internal UILanguageInfo(string Language, LanguageAttributes Attributes, IntPtr FallbackLanguagesPointer)
+        /// <param name="FallbackLanguagesPointer">Puntatore all'inizio della multistringa che contiene le lingue di fallback.</param>
+        internal UILanguageInfo(string Language, LanguageAttributes Attributes, SafeMultistringPointer FallbackLanguagesPointer)
         {
             this.Language = Language;
             IsInstalled = Attributes.HasFlag(LanguageAttributes.MUI_LANGUAGE_INSTALLED);
@@ -60,16 +62,7 @@ namespace WindowsAPI.MultilingualUserInterfaceWrapper.DataClasses
             {
                 LocalizationLevel = LanguageLocalizationLevel.LIPLanguage;
             }
-            string FallbackLanguage;
-            List<string> FallbackLanguages = new List<string>();
-            do
-            {
-                FallbackLanguage = Marshal.PtrToStringUni(FallbackLanguagesPointer);
-                FallbackLanguagesPointer += (FallbackLanguage.Length + 1) * UnicodeEncoding.CharSize;
-                FallbackLanguages.Add(FallbackLanguage);
-            }
-            while (!string.IsNullOrWhiteSpace(FallbackLanguage));
-            this.FallbackLanguages = FallbackLanguages.ToArray();
+            FallbackLanguages = FallbackLanguagesPointer.ReadStringsFromMemory();
         }
     }
 }
